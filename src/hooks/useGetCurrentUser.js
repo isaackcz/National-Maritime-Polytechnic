@@ -13,12 +13,12 @@ const useGetCurrentUser = () => {
     const GetCurrentUser = useCallback(async () => {
         try {
             const token = getToken('csrf-token');
+            
             const response = await axios.get(`${url}/user`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             
             setUserData(response.data.user);
-            // console.log('User data fetched:', response.data.user);
         } catch (error) {
             removeToken('csrf-token');
             navigate('/access-denied');

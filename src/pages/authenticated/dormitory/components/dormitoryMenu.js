@@ -28,7 +28,7 @@ const DormitoryAdminMenu = () => {
     }, [userData, setShowLoader]);
 
     useEffect(() => {
-        if (locationPaths.includes('dormitory/dormitory')) {
+        if (locationPaths.includes('dormitory/dormitory') || locationPaths.includes('dormitory/requests')) {
             setActiveMenu('dormitory');
         } else if (locationPaths.includes('dormitory/adminAccount')) {
             setActiveMenu('adminAccount');
@@ -70,7 +70,7 @@ const DormitoryAdminMenu = () => {
                     <li className="nav-item d-flex align-items-center">
                         <a className="nav-link" data-widget="pushmenu" href="#" role="button">
                             <i className="fas fa-bars mr-2"></i>
-                            <WelcomeGreeting name={`${userData?.role?.toUpperCase() || 'ADMIN'}`} />
+                            <WelcomeGreeting name={`${userData?.role.toUpperCase()}`} />
                         </a>
                     </li>
                 </ul>
@@ -95,7 +95,13 @@ const DormitoryAdminMenu = () => {
                 <button 
                     className="btn btn-sm btn-light d-md-none m-2 position-absolute" 
                     data-widget="pushmenu" 
-                    style={{ right: '0', top: '0', zIndex: '1050', borderRadius: '4px', padding: '0.4rem 0.6rem' }}
+                    style={{ 
+                        right: '0', 
+                        top: '0', 
+                        zIndex: '1050',
+                        borderRadius: '4px',
+                        padding: '0.4rem 0.6rem'
+                    }}
                     title="Close Sidebar"
                 >
                     <i className="fas fa-times"></i>
@@ -103,19 +109,21 @@ const DormitoryAdminMenu = () => {
 
                 <div className="text-center w-100 small px-4 my-2 bg-white text-bold">
                     <img src="/system-images/banner-logo.png" className="w-100 img-fluid mb-3" alt="" />
+                    
                     <small className='text-bold'>
+                        DEPARTMENT OF MIGRANT WORKERS
                         NATIONAL MARITIME POLYTECHNIC
                     </small>
                 </div>
 
-                <div className="sidebar" style={{ 'fontSize': 15 }}>
+                <div className="sidebar" style={{'fontSize' : 15 }}>
                     <div className="user-panel mt-2 pb-1 mb-3 d-flex border-0 bg-light p-2 small">
                         <div className="image">
-                            <img src={`${urlWithoutToken}/user_images/${userData?.profile_picture}`} className="rounded-circle elevation-1 mt-1" height="40" alt="User" />
+                            <img src={`${urlWithoutToken}/user_images/${ userData?.profile_picture }`} className="rounded-circle elevation-1 mt-1" height="40" alt="User Image" />
                         </div>
                         <div className="info">
-                            <Link to="/trainee/my-account" className="d-block text-overflow text-truncate">
-                                { userData?.fname + ' ' + userData?.mname + ' ' + userData?.lname + ' ' + (userData?.suffix ?? '') }<br />
+                            <Link to="/dormitory/adminAccount" className="d-block text-overflow text-truncate">
+                                { userData?.fname + ' ' + userData?.mname + ' ' + userData?.lname + ' ' + (userData?.suffix ?? '')}<br />
                                 <small className="text-bold">{ userData?.email }</small>
                             </Link>
                         </div>
@@ -124,21 +132,15 @@ const DormitoryAdminMenu = () => {
                     <nav className="mt-2 text--fontPos13--xW8hS">
                         <ul className="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                             <li className="nav-item">
-                                <Link to="/dormitory/dashboard" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('dormitory/dashboard') ? 'active' : ''}`} onClick={() => setActiveMenu('dashboard')}>
+                                <Link to="/dormitory/dashboard" onClick={() => setActiveMenu('dashboard')} className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('dormitory/dashboard') ? 'active' : ''}`}>
                                     <span className="nav-icon material-icons-outlined">insights</span>
                                     <p>Dashboard</p>
                                 </Link>
                             </li>
-                            
-                            {/* <li className="nav-item">
-                                <Link to="/dormitory/dormitory" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('dormitory/dormitory') ? 'active' : ''}`} onClick={() => setActiveMenu('dormitory')}>
-                                    <span className="nav-icon material-icons-outlined">house_siding</span>
-                                    <p>Dormitory</p>
-                                </Link>
-                            </li> */}
+
                             <li className={`nav-item ${activeMenu === 'dormitory' ? 'menu-open' : ''} `} onClick={() => setActiveMenu(activeMenu === 'dormitory' ? activeMenu : 'dormitory') }>
-                                <Link to="#" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('dormitory/dormitory') ? 'active' : ''}`}>
-                                    <span className="nav-icon material-icons-outlined">class</span>
+                                <Link to="#" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('dormitory/dormitory') || locationPaths.includes('dormitory/requests') ? 'active' : ''}`}>
+                                    <span className="nav-icon material-icons-outlined">house_siding</span>
                                     <p>
                                         Dormitory
                                         <i className="fas fa-angle-left right"></i>
@@ -154,15 +156,14 @@ const DormitoryAdminMenu = () => {
                                             </Link>
                                         </li>
                                         <li className="nav-item">
-                                            <Link to="/dormitory/dormitory/enroll-to-dormitory" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('dormitory/dormitory/enroll-to-dormitory') ? 'active' : ''}`}>
-                                                <span className="nav-icon material-icons-outlined">add</span>
-                                                <p>Add Dormitory</p>
+                                            <Link to="/dormitory/requests" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('dormitory/requests') ? 'active' : ''}`}>
+                                                <span className="nav-icon material-icons-outlined">inbox</span>
+                                                <p>Requests</p>
                                             </Link>
                                         </li>
                                     </ul>
                                 )}
                             </li>
-
 
                             <li className="nav-item">
                                 <Link to="/dormitory/adminAccount" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('dormitory/adminAccount') ? 'active' : ''}`} onClick={() => setActiveMenu('adminAccount')}>

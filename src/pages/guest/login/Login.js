@@ -70,7 +70,7 @@ const Login = () => {
         } catch(error) {
             setOpenToast(true);
             setToastStatus('error');
-            setToastMessage(error.response.data.message);
+            setToastMessage(error?.response?.data?.message || 'Login failed. Please check your credentials.');
         } finally {
             setPassword('');
             setIsSubmitting(false);

@@ -22,6 +22,7 @@ import AdminAccount from "./pages/authenticated/admin/adminAccount/adminAccount"
 import AdminMenu from "./pages/components/admin/AdminMenu";
 import DormitoryAdminMenu from "./pages/authenticated/dormitory/components/dormitoryMenu";
 import DormitoryDormitory from "./pages/authenticated/dormitory/dormitory/dormitory";
+import Request from "./pages/authenticated/dormitory/dormitory/Request";
 
 
 const App = () => {
@@ -52,6 +53,7 @@ const App = () => {
                     <Route element={<DormitoryAdminMenu />}>
                         <Route path="/dormitory/dashboard" element={<p>juu</p>} />
                         <Route path="/dormitory/dormitory" element={<DormitoryDormitory />} />
+                        <Route path="/dormitory/requests" element={<Request />} />
                         <Route path="/dormitory/adminAccount" element={<p>pewpew</p>} />
                     </Route>
                 </Route>
