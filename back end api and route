@@ -1,0 +1,43 @@
+create dormitory rooms table
+Schema::create('dormitory_rooms', function (Blueprint $table) {
+            $table->id();
+            $table->foreignIdFor(User::class)->ondelete('cascade');
+            $table->string('room_name');
+            $table->decimal('room_cost', 10, 2)->default(0.00);
+            $table->integer('room_slot');
+            $table->enum('room_status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
+            $table->timestamps();
+        });
+
+create dormitory tenants table
+Schema::create('dormitory_tenants', function (Blueprint $table) {
+            $table->id();
+            $table->foreignIdFor(DormitoryRoom::class)->ondelete('cascade');
+            $table->foreignIdFor(User::class)->ondelete('cascade');
+            $table->date('tenant_from_date')->nullable();
+            $table->date('tenant_to_date')->nullable();
+            $table->enum('tenant_status', ['PENDING', 'TERMINATED', 'APPROVED', 'CANCELLED'])->default('PENDING');
+            $table->timestamps();
+        });
+
+create dormitory invoices table
+Schema::create('dormitory_invoices', function (Blueprint $table) {
+            $table->id();
+            $table->foreignIdFor(DormitoryTenant::class)->ondelete('cascade');
+            $table->foreignIdFor(DormitoryRoom::class)->ondelete('cascade');
+            $table->enum('invoice_status', ['PENDING', 'PAID', 'CANCELLED', 'TERMINATED'])->default('PENDING');
+            $table->longText('invoice_receipt');
+            $table->dateTime('invoice_date');
+            $table->timestamps();
+        });
+
+
+        /** dormitory */
+    Route::middleware('admin-dormitory')->prefix('/dormitory-admin/')->group(function() {
+        Route::prefix('/dormitory/')->group(function() {
+            Route::get('get', [DormitoryController::class, 'dormitories']);
+            Route::get('get/tenants/{dormitory_id}', [DormitoryController::class, 'get_tenants']);
+            Route::get('get/tenants/invoice/{tenant_id}', [DormitoryController::class, 'get_tenants_invoices']);
+            Route::post('create_or_update_dormitory', [DormitoryController::class, 'create_or_update_dormitory']);
+            Route::get('remove/{dormitory_id}', [DormitoryController::class, 'remove_dormitory']);
+        });

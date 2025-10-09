@@ -1,0 +1,54 @@
+/* Custom scrollbar styles for stepper content */
+.stepper-content-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.stepper-content-scroll::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.stepper-content-scroll::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+.stepper-content-scroll::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Smooth transitions for cards */
+.info-card-transition {
+    transition: all 0.2s ease-in-out;
+}
+
+.info-card-transition:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Ensure all inputs in the same row have consistent alignment */
+.MuiGrid-root .MuiFormControl-root,
+.MuiGrid-root .react-tel-input {
+    height: 100%;
+}
+
+/* Fix label consistency for external labels */
+.MuiGrid-root .MuiFormLabel-root {
+    margin-bottom: 4px !important;
+    display: block;
+}
+
+/* Min and max width constraints for all inputs */
+.MuiTextField-root .MuiInputBase-root,
+.MuiTextField-root .MuiInputBase-input,
+.react-tel-input .form-control {
+    min-width: 220px !important;
+    max-width: 800px !important;
+}
+
+/* Ensure grid items respect width constraints */
+.MuiGrid-item {
+    min-width: 120px;
+    max-width: 400px;
+}
+

@@ -1,0 +1,258 @@
+/* Dormitory Payment Page Styles */
+
+/* Success Checkmark Animation */
+.success-checkmark {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
+    opacity: 0;
+    transform: scale(0);
+    transition: all 0.5s ease-in-out;
+}
+
+.success-checkmark.show {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.success-checkmark .check-icon {
+    width: 120px;
+    height: 120px;
+    position: relative;
+    border-radius: 50%;
+    box-sizing: content-box;
+    border: 4px solid #34a853;
+}
+
+.success-checkmark .check-icon::before {
+    top: 3px;
+    left: -2px;
+    width: 30px;
+    transform-origin: 100% 50%;
+    border-radius: 100px 0 0 100px;
+}
+
+.success-checkmark .check-icon::after {
+    top: 0;
+    left: 30px;
+    width: 60px;
+    transform-origin: 0 50%;
+    border-radius: 0 100px 100px 0;
+    animation: rotate-circle 4.25s ease-in;
+}
+
+.success-checkmark .check-icon::before,
+.success-checkmark .check-icon::after {
+    content: '';
+    height: 120px;
+    position: absolute;
+    background: #f8f9fa;
+    transform: rotate(-45deg);
+}
+
+.success-checkmark .icon-line {
+    height: 5px;
+    background-color: #34a853;
+    display: block;
+    border-radius: 2px;
+    position: absolute;
+    z-index: 10;
+}
+
+.success-checkmark .icon-line.line-tip {
+    top: 56px;
+    left: 22px;
+    width: 30px;
+    transform: rotate(45deg);
+    animation: icon-line-tip 0.75s;
+}
+
+.success-checkmark .icon-line.line-long {
+    top: 48px;
+    right: 16px;
+    width: 55px;
+    transform: rotate(-45deg);
+    animation: icon-line-long 0.75s;
+}
+
+.success-checkmark .icon-circle {
+    top: -4px;
+    left: -4px;
+    z-index: 10;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    position: absolute;
+    box-sizing: content-box;
+    border: 4px solid rgba(52, 168, 83, 0.5);
+}
+
+.success-checkmark .icon-fix {
+    top: 12px;
+    width: 10px;
+    left: 32px;
+    z-index: 1;
+    height: 100px;
+    position: absolute;
+    transform: rotate(-45deg);
+    background-color: #f8f9fa;
+}
+
+@keyframes rotate-circle {
+    0% {
+        transform: rotate(-45deg);
+    }
+    5% {
+        transform: rotate(-45deg);
+    }
+    12% {
+        transform: rotate(-405deg);
+    }
+    100% {
+        transform: rotate(-405deg);
+    }
+}
+
+@keyframes icon-line-tip {
+    0% {
+        width: 0;
+        left: 1px;
+        top: 26px;
+    }
+    54% {
+        width: 0;
+        left: 1px;
+        top: 26px;
+    }
+    70% {
+        width: 30px;
+        left: -8px;
+        top: 56px;
+    }
+    84% {
+        width: 22px;
+        left: 4px;
+        top: 48px;
+    }
+    100% {
+        width: 30px;
+        left: 22px;
+        top: 56px;
+    }
+}
+
+@keyframes icon-line-long {
+    0% {
+        width: 0;
+        right: 46px;
+        top: 54px;
+    }
+    65% {
+        width: 0;
+        right: 46px;
+        top: 54px;
+    }
+    84% {
+        width: 55px;
+        right: 0px;
+        top: 35px;
+    }
+    100% {
+        width: 55px;
+        right: 16px;
+        top: 48px;
+    }
+}
+
+/* Payment Method Card Hover Effect */
+.payment-method-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.payment-method-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f3f4;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #dadce0;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #bdc1c6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .success-checkmark {
+        width: 80px;
+        height: 80px;
+    }
+
+    .success-checkmark .check-icon {
+        width: 80px;
+        height: 80px;
+    }
+
+    .success-checkmark .check-icon::before,
+    .success-checkmark .check-icon::after {
+        height: 80px;
+    }
+
+    .success-checkmark .icon-line.line-tip {
+        top: 38px;
+        left: 14px;
+        width: 20px;
+    }
+
+    .success-checkmark .icon-line.line-long {
+        top: 32px;
+        right: 10px;
+        width: 38px;
+    }
+
+    .success-checkmark .icon-circle {
+        width: 80px;
+        height: 80px;
+    }
+
+    .success-checkmark .icon-fix {
+        top: 8px;
+        left: 22px;
+        height: 66px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .card,
+    .card * {
+        visibility: visible;
+    }
+
+    .card {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+
+    button {
+        display: none !important;
+    }
+}
+
