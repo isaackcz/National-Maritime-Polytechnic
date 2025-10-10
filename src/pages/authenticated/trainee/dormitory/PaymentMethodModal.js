@@ -1,6 +1,6 @@
 import React from 'react';
 
-const PaymentMethodModal = ({ show, onClose, onSelectPayment, room, checkInDate, checkOutDate }) => {
+const PaymentMethodModal = ({ show, onClose, onConfirm, room, checkInDate, checkOutDate }) => {
     if (!show) return null;
 
     const formatDate = (dateString) => {
@@ -34,7 +34,7 @@ const PaymentMethodModal = ({ show, onClose, onSelectPayment, room, checkInDate,
                                 <i className="fas fa-credit-card text-primary" style={{ fontSize: '1.2rem' }}></i>
                             </div>
                             <div>
-                                <h5 className="mb-1 font-weight-bold text-white">Select Payment Method</h5>
+                                <h5 className="mb-1 font-weight-bold text-white">Confirm Booking Request</h5>
                                 <p className="mb-0 text-white-50" style={{ fontSize: '13px' }}>{room?.room_name || 'Room'}</p>
                             </div>
                         </div>
@@ -80,12 +80,12 @@ const PaymentMethodModal = ({ show, onClose, onSelectPayment, room, checkInDate,
                         </div>
 
                         <div className="alert alert-warning border-0 mb-4" style={{ backgroundColor: '#fff4e5' }}>
-                            <i className="fas fa-exclamation-triangle mr-2" style={{ color: '#ff9800' }}></i>
-                            <small style={{ fontSize: '13px', color: '#e65100' }}><strong>Note:</strong> All payments are processed online. After approval, you will receive a payment link via email.</small>
+                            <i className="fas fa-credit-card mr-2" style={{ color: '#ff9800' }}></i>
+                            <small style={{ fontSize: '13px', color: '#e65100' }}><strong>Payment Method: Online Only</strong> - All payments are processed online. After approval, you will receive a payment link via email.</small>
                         </div>
 
                         <div className="text-center py-3">
-                            <button className="btn btn-primary btn-lg px-5" onClick={() => onSelectPayment('online')} style={{ fontSize: '15px', fontWeight: '600', borderRadius: '8px' }}>
+                            <button className="btn btn-primary btn-lg px-5" onClick={onConfirm} style={{ fontSize: '15px', fontWeight: '600', borderRadius: '8px' }}>
                                 <i className="fas fa-paper-plane mr-2"></i>
                                 Submit Request
                             </button>
@@ -104,4 +104,3 @@ const PaymentMethodModal = ({ show, onClose, onSelectPayment, room, checkInDate,
 };
 
 export default PaymentMethodModal;
-

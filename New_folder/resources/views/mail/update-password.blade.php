@@ -1,0 +1,1 @@
+Temporary Password: <strong>{{ $details['password'] }}</strong>

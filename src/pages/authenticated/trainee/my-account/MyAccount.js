@@ -14,7 +14,7 @@ const MyAccount = () => {
 
     useEffect(() => {
         logic.initializeUserData();
-    }, [logic.userData, logic.isFetching]);
+    }, []);
 
     const tableColumns = [
         {
@@ -35,6 +35,12 @@ const MyAccount = () => {
     return (
         <>
             <PageName pageName={[{ 'name': 'My Account', 'last': true, 'address': '/welcome/my-account' }]} />
+            
+            {/* Loading Animation */}
+            <logic.SubmitLoadingAnim cls="loader" />
+            
+            {/* Toast Notifications */}
+            <logic.Toast />
 
             {logic.isFetching ? <SkeletonLoader /> : (
                 <section className="content">
@@ -72,9 +78,8 @@ const MyAccount = () => {
                                                 
                                                 <ProfilePictureSection avatarPreview={logic.avatarPreview} fileInputRef={logic.fileInputRef} CheckUploadedAvatar={logic.CheckUploadedAvatar} setAvatarPreview={logic.setAvatarPreview} />
 
-                                                <form onSubmit={logic.SubmitFormPersonal} method='POST' encType="multipart/form-data">
-                                                    <PersonalInfoStepper logic={logic} />
-                                                    </form>
+                                                {/* Form submission is now handled inside PersonalInfoStepper to prevent accidental submissions */}
+                                                <PersonalInfoStepper logic={logic} />
                                                 </div>
 
                                             {/* PASSWORD TAB */}

@@ -85,7 +85,9 @@ const RoomTenantsModal = ({ show, onClose, room, tenants }) => {
             name: 'Invoice Status',
             cell: (row) => {
                 const statusColors = { PAID: 'success', PENDING: 'warning', CANCELLED: 'secondary', TERMINATED: 'danger' };
-                const status = row.invoice?.invoice_status || 'PENDING';
+                // Backend relationship is 'tenant_invoices' (plural, hasMany)
+                // Access first invoice from array
+                const status = row.tenant_invoices?.[0]?.invoice_status || 'PENDING';
                 return <span className={`badge badge-${statusColors[status] || 'warning'}`}>{status}</span>;
             },
             sortable: true,

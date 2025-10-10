@@ -32,6 +32,9 @@ const AdminDormitory = () => {
             setIsFetchingBuildings(isInitialLoad);
             const token = getToken('csrf-token');
 
+            // API: GET /dormitory-admin/dormitory/get (existing, working)
+            // RETURNS: { dormitories: Array<{ id, room_name, room_description, room_slot, room_cost, room_status, tenants_count }> }
+            // NOTE: tenants_count comes from withCount(['tenants']) in backend
             const response = await axios.get(`${url}/dormitory-admin/dormitory/get`, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' }
             });
@@ -66,7 +69,13 @@ const AdminDormitory = () => {
             setIsSubmitting(true);
             const token = getToken('csrf-token');
             
-            const payload = { room_name: newRoom.room_name.trim(), room_slot: Number(newRoom.room_slot), room_cost: Number(newRoom.room_cost), httpMethod: "POST" };
+            const payload = { 
+                room_name: newRoom.room_name.trim(),
+                room_description: newRoom.room_description.trim(), // Required by backend validation
+                room_slot: Number(newRoom.room_slot), 
+                room_cost: Number(newRoom.room_cost), 
+                httpMethod: "POST" 
+            };
             const response = await axios.post(`${url}/dormitory-admin/dormitory/create_or_update_dormitory`, payload, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' }
             });
@@ -104,20 +113,29 @@ const deleteBuilding = async (id) => {
     setEditData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const saveBuilding = async (id) => {
-    if (!window.confirm('Save changes?')) return;
-    try {
-        const token = getToken('csrf-token');
-            
-        setEditData((prev) => ({ ...prev, 'document_id': id }));
-        const response = await axios.post(`${url}/dormitory-admin/dormitory/create_or_update_dormitory`, editData, {
-                headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
-        });
-        setEditRowId(null);
-        await fetchBuildings();
-    } catch (error) {
-        alert(error?.response?.data?.message || 'Failed to update building');
-    }
+    const saveBuilding = async (row) => {
+        if (!window.confirm(`Save changes? ${row.id}`)) return;
+        try {
+            const token = getToken('csrf-token');
+            const payload = {
+                room_name: editData.room_name.trim(),  
+                room_description: editData.room_description.trim(), 
+                room_slot: Number(editData.room_slot), 
+                room_cost: Number(editData.room_cost), 
+                document_id: editData.id, 
+                httpMethod: 'UPDATE' 
+            };
+            await axios.post(`${url}/dormitory-admin/dormitory/create_or_update_dormitory`, payload, 
+                {
+                    headers: { Authorization: `Bearer ${token}` 
+                }
+            });
+            setEditRowId(null);
+            await fetchBuildings();
+        } 
+        catch (error) {
+            console.log("alert alert alert", error?.response?.data?.message || 'Failed to update building');
+        }       
     };
 
     const cancelEdit = () => {
@@ -128,6 +146,9 @@ const deleteBuilding = async (id) => {
         try {
             const token = getToken('csrf-token');
 
+            // API: GET /dormitory-admin/dormitory/get/tenants/{room_id} (existing, working)
+            // RETURNS: { tenants: Array<DormitoryTenant with tenant relation> }
+            // NOTE: Uses existing table columns - tenant includes User model data
             const response = await axios.get(`${url}/dormitory-admin/dormitory/get/tenants/${room.id}`, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
             });
@@ -148,10 +169,29 @@ const deleteBuilding = async (id) => {
         try {
             const token = getToken('csrf-token');
 
-            const response = await axios.get(`${url}/dormitory-admin/dormitory/get/overdue-tenants/${room.id}`, {
+            // API: GET /dormitory-admin/dormitory/get/tenants/{room_id} (existing, working)
+            // RETURNS: { tenants: Array<DormitoryTenant with tenant relation> }
+            // NOTE: Uses existing fields only - no backend endpoint needed for overdue calculation
+            const response = await axios.get(`${url}/dormitory-admin/dormitory/get/tenants/${room.id}`, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
             });
-            setOverdueTenants(response?.data?.overdue_tenants || []);
+            const tenants = response?.data?.tenants || [];
+            
+            // Calculate overdue client-side using existing fields:
+            // - tenant_status (existing enum field)
+            // - tenant_to_date (existing date field)
+            // NO NEW DATABASE COLUMNS NEEDED
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const overdue = tenants.filter(tenant => {
+                if (tenant.tenant_status !== 'APPROVED') return false;
+                if (!tenant.tenant_to_date) return false;
+                const toDate = new Date(tenant.tenant_to_date);
+                toDate.setHours(0, 0, 0, 0);
+                return today > toDate;
+            });
+            
+            setOverdueTenants(overdue);
         } catch (error) {
             console.error('Failed to fetch overdue tenants:', error);
             setOverdueTenants([]);
@@ -159,35 +199,55 @@ const deleteBuilding = async (id) => {
     };
 
     const handleOverdueClick = async (room) => {
-        if (room.overdue_count === 0) return;
         setSelectedRoom(room);
         await fetchOverdueTenants(room);
         setShowOverdueModal(true);
     };
 
     const toggleRoomStatus = async (room) => {
-        const currentStatus = room.room_status === 'ACTIVE' ? 'AVAILABLE' : (room.room_status === 'INACTIVE' ? 'UNAVAILABLE' : room.room_status);
-        const newStatus = currentStatus === 'AVAILABLE' ? 'INACTIVE' : 'ACTIVE';
+        const currentStatus = room.room_status;
+        const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
         const confirmMsg = newStatus === 'INACTIVE' 
-            ? 'Disable this room? Tenants will be notified and no new tenants can be accepted.' 
+            ? 'Disable this room? Tenants will be notified and no new tenants can be accepted.'
             : 'Enable this room? It will be available for new tenants.';
-        
+
         if (!window.confirm(confirmMsg)) return;
-        
+
         try {
-            const token = getToken('csrf-token');
-            
-            const response = await axios.post(`${url}/dormitory-admin/dormitory/toggle-status/${room.id}`, 
-                { status: newStatus },
-                { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+            const token = getToken('csrf-token');  
+
+            const payload = {
+                room_name: room.room_name.trim(),  
+                room_description: room.room_description?.trim() || '',  
+                room_slot: Number(room.room_slot), 
+                room_cost: Number(room.room_cost), 
+                room_status: newStatus,
+                httpMethod: 'UPDATE',
+                document_id: room.id
+            };  
+
+            // Optimistic UI update
+            setBuildings(prev =>
+                prev.map(r => 
+                    r.id === room.id ? { ...r, room_status: newStatus } : r
+                )
             );
             
+            const response = await axios.post(
+                `${url}/dormitory-admin/dormitory/create_or_update_dormitory`, 
+                payload,
+                { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+            );
+
             if (response.status === 200) {
-                await fetchBuildings(false);
-                alert(response?.data?.message || `Room ${newStatus === 'INACTIVE' ? 'disabled' : 'enabled'} successfully. Tenants have been notified.`);
+                await fetchBuildings(true);
+                console.log(`Room ${newStatus === 'INACTIVE' ? 'disabled' : 'enabled'} successfully.`);
             }
         } catch (error) {
-            alert(error?.response?.data?.message || 'Failed to update room status');
+            console.error("Error toggling room status:", error);
+            // Revert optimistic update on error
+            await fetchBuildings(false);
         }
     };
 
@@ -240,31 +300,33 @@ const deleteBuilding = async (id) => {
         },
         {
             name: 'Overdue',
-            cell: (row) => row.overdue_count > 0 ? (
-                <span onClick={() => handleOverdueClick(row)} className="badge badge-danger" style={{ cursor: 'pointer', fontSize: '13px' }} title="Click to view overdue tenants">
-                    <i className="fas fa-exclamation-circle mr-1"></i>
-                    {row.overdue_count}
-                </span>
-            ) : (
-                <span className="badge badge-success" style={{ fontSize: '13px' }}>
-                    <i className="fas fa-check-circle mr-1"></i>
-                    0
-                </span>
-        ),
-        sortable: true,
+            cell: (row) => (
+                <button 
+                    type="button" 
+                    className="btn btn-sm btn-outline-warning" 
+                    onClick={() => handleOverdueClick(row)}
+                    style={{ fontSize: '11px', padding: '2px 8px' }}
+                    title="Check for overdue tenants"
+                >
+                    <i className="fas fa-clock mr-1"></i>
+                    Check
+                </button>
+            ),
+            ignoreRowClick: true,
+            button: true,
             maxWidth: '100px',
-    },
+        },
     {
         name: 'Action',
             cell: (row) => editRowId === row.id ? (
             <div className="btn-group btn-group-sm">
-                    <button type="button" className="btn btn-success" title="Save" onClick={() => saveBuilding(row.id)}><i className="fas fa-save"></i></button>
+                    <button type="button" className="btn btn-success" title="Save" onClick={() => saveBuilding(row)}><i className="fas fa-save"></i></button>
                     <button type="button" className="btn btn-secondary" title="Cancel" onClick={cancelEdit}><i className="fas fa-times"></i></button>
             </div>
         ) : (
             <div className="btn-group btn-group-sm">
                     <button type="button" className="btn btn-info" title="Edit" onClick={() => startEdit(row)}><i className="fas fa-user-edit"></i></button>
-                    <button type="button" className={`btn btn-${(row.room_status === 'ACTIVE' || row.room_status === 'AVAILABLE') ? 'warning' : 'success'}`} title={(row.room_status === 'ACTIVE' || row.room_status === 'AVAILABLE') ? 'Disable Room' : 'Enable Room'} onClick={() => toggleRoomStatus(row)}><i className={`fas fa-${(row.room_status === 'ACTIVE' || row.room_status === 'AVAILABLE') ? 'ban' : 'check-circle'}`}></i></button>
+                    <button type="button" className={`btn btn-${row.room_status === 'ACTIVE' ? 'warning' : 'success'}`} title={row.room_status === 'ACTIVE' ? 'Disable Room' : 'Enable Room'} onClick={() => toggleRoomStatus(row)}><i className={`fas fa-${row.room_status === 'ACTIVE' ? 'ban' : 'check-circle'}`}></i></button>
                     {row.tenants_count === 0 && <button type="button" className="btn btn-danger" title="Delete" onClick={() => deleteBuilding(row.id)}><i className="fas fa-trash"></i></button>}
             </div>
         ),
@@ -293,7 +355,7 @@ const deleteBuilding = async (id) => {
                                     <span className="fas fa-building text-success mr-2"></span>
                                         Capacity Management
                                         </h6>
-                                <button type="button" className="btn btn-success btn-sm" onClick={() => { setNewRoom({ document_id: "", room_number: "", capacity: "" }); setRoomErrors({}); setShowAddRoomModal(true); }} style={{ fontSize: "12px" }}>
+                                <button type="button" className="btn btn-success btn-sm" onClick={() => { setNewRoom({ document_id: "", room_name: "", room_description: "", room_slot: "", room_cost: "" }); setRoomErrors({}); setShowAddRoomModal(true); }} style={{ fontSize: "12px" }}>
                                         <i className="fas fa-door-open mr-1"></i>
                                         <span className="d-none d-md-inline">Add </span>Room
                                         </button>
@@ -334,7 +396,7 @@ const deleteBuilding = async (id) => {
                                             <TextField fullWidth size="small" label="Room Name" value={newRoom.room_name} onChange={(e) => setNewRoom({ ...newRoom, room_name: e.target.value })} error={Boolean(roomErrors.room_name)} helperText={roomErrors.room_name || ''} />
                                         </div>
                                         <div className="col-12 mb-3">
-                                            <TextField fullWidth size="small" multiline rows={3} label="Description" value={newRoom.description} onChange={(e) => setNewRoom({ ...newRoom, description: e.target.value })} error={Boolean(roomErrors.description)} helperText={roomErrors.description || ''} />
+                                            <TextField fullWidth size="small" multiline rows={3} label="Description" value={newRoom.room_description} onChange={(e) => setNewRoom({ ...newRoom, room_description: e.target.value })} error={Boolean(roomErrors.room_description)} helperText={roomErrors.room_description || ''} />
                                         </div>
                                         <div className="col-12 col-sm-6 mb-3">
                                             <TextField fullWidth size="small" type="number" label="Capacity" value={newRoom.room_slot} onChange={(e) => setNewRoom({ ...newRoom, room_slot: e.target.value })} error={Boolean(roomErrors.room_slot)} helperText={roomErrors.room_slot || ''} inputProps={{ min: 1 }} />

@@ -12,7 +12,7 @@ const Dormitory = () => {
     const { getToken } = useGetToken();
     const [loading, setLoading] = useState(true);
     const [rooms, setRooms] = useState([]);
-    const [userRequest, setUserRequest] = useState(null);
+    const [userDormitory, setUserDormitory] = useState(null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,11 +29,21 @@ const Dormitory = () => {
         try {
             setLoading(true);
             const token = getToken('csrf-token');
-
-            const response = await axios.get(`${url}/trainee/dormitory/rooms`, {
+            
+            // API: GET /dormitories/get_all_dormitories (existing, working)
+            // RETURNS: { dormitories: Array<{ id, room_name, room_description, room_slot, room_cost, room_status, tenants_count }> }
+            // NOTE: tenants_count comes from withCount(['tenants']) in backend
+            const response = await axios.get(`${url}/dormitories/get_all_dormitories`, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
             });
-            setRooms(response?.data?.rooms || []);
+            const dormitories = response?.data?.dormitories || [];
+            
+            // Calculate available_slots (no DB column needed - calculated from existing fields)
+            const roomsWithSlots = dormitories.map(room => ({
+                ...room,
+                available_slots: room.room_slot - (room.tenants_count || 0)
+            }));
+            setRooms(roomsWithSlots);
         } catch (error) {
             console.error('Failed to fetch rooms:', error);
             setRooms([]);
@@ -45,14 +55,31 @@ const Dormitory = () => {
     const fetchUserRequest = async () => {
         try {
             const token = getToken('csrf-token');
-
-            const response = await axios.get(`${url}/trainee/dormitory/my-request`, {
+            
+            // API: GET /trainee/dormitories/get_personal_dormitory (existing, working)
+            // RETURNS: { trainee_dormitories: Array<User with trainee_dormitory relation> }
+            // NOTE: Returns User model with trainee_dormitory relationship (hasMany DormitoryTenant)
+            const response = await axios.get(`${url}/trainee/dormitories/get_personal_dormitory`, { 
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
             });
-            setUserRequest(response?.data?.request || null);
+            const traineeDormitories = response?.data?.trainee_dormitories || [];
+            
+            // Get the first user's dormitories (should be current user)
+            if (traineeDormitories.length > 0 && traineeDormitories[0].trainee_dormitory) {
+                const dormitories = traineeDormitories[0].trainee_dormitory;
+                
+                // Find active dormitory using existing tenant_status field (no new DB columns)
+                // Status flow: PENDING → APPROVED → EXTENDING → APPROVED (all from existing enum)
+                const activeDormitory = dormitories.find(d => 
+                    ['PENDING', 'APPROVED', 'EXTENDING'].includes(d.tenant_status)
+                );
+                setUserDormitory(activeDormitory || null);
+            } else {
+                setUserDormitory(null);
+            }
         } catch (error) {
-            console.error('Failed to fetch user request:', error);
-            setUserRequest(null);
+            console.error('Failed to fetch user dormitory:', error);
+            setUserDormitory(null);
         }
     };
 
@@ -93,16 +120,21 @@ const Dormitory = () => {
         setShowPaymentModal(true);
     };
 
-    const handlePaymentMethodSelect = async (paymentMethod) => {
+    const handleConfirmRequest = async () => {
         try {
             setIsSubmitting(true);
             const token = getToken('csrf-token');
 
-            const response = await axios.post(`${url}/trainee/dormitory/request`, {
+            // API NEEDED: POST /trainee/dormitories/request_tenant_room
+            // POST DATA: { room_id: number, check_in_date: date, check_out_date: date }
+            // RESPONSE: { message: string }
+            // CREATES: New DormitoryTenant record with tenant_status='PENDING' (default from migration)
+            // NOTE: Uses ONLY existing table columns - payment is always online (no column needed)
+            const response = await axios.post(`${url}/trainee/dormitories/request_tenant_room`, {
                 room_id: selectedRoom.id,
-                payment_method: paymentMethod,
                 check_in_date: checkInDate,
                 check_out_date: checkOutDate
+                // No payment_method - payment is always online, no DB column exists
             }, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
             });
@@ -123,36 +155,37 @@ const Dormitory = () => {
     };
 
     const hasPendingRequest = () => {
-        return userRequest && userRequest.tenant_status === 'PENDING';
+        return userDormitory && userDormitory.tenant_status === 'PENDING';
     };
 
     const hasApprovedBooking = () => {
-        return userRequest && userRequest.tenant_status === 'APPROVED';
+        return userDormitory && userDormitory.tenant_status === 'APPROVED';
     };
 
     const isExtending = () => {
-        return userRequest && userRequest.tenant_status === 'EXTENDING';
+        return userDormitory && userDormitory.tenant_status === 'EXTENDING';
     };
 
     const canRequestRoom = (room) => {
-        // If no request or booking, can request any available room
-        if (!userRequest) return true;
+        // If no dormitory record, can request any active room with slots
+        if (!userDormitory) return room.room_status === 'ACTIVE' && room.available_slots > 0;
         
         // If pending or extending, cannot request any room
         if (hasPendingRequest() || isExtending()) return false;
         
         // If has approved booking, can only extend the same room
         if (hasApprovedBooking()) {
-            return room.id === userRequest.dormitory_room_id;
+            return room.id === userDormitory.dormitory_room_id;
         }
         
-        return true;
+        // For other statuses (TERMINATED, CANCELLED), can request new room
+        return room.room_status === 'ACTIVE' && room.available_slots > 0;
     };
 
     const getButtonText = (room) => {
         if (hasPendingRequest()) return 'Request Pending';
         if (isExtending()) return 'Extension Pending';
-        if (hasApprovedBooking() && room.id === userRequest.dormitory_room_id) return 'Extend Stay';
+        if (hasApprovedBooking() && room.id === userDormitory.dormitory_room_id) return 'Extend Stay';
         return 'Send Request';
     };
 
@@ -163,7 +196,7 @@ const Dormitory = () => {
 
     return (
         <>
-            <PageName pageName={[{ name: 'Dormitory', last: true, address: '/trainee/dormitory' }]} />
+            <PageName pageName={[{ name: 'Dormitory', last: true, address: '/trainee/dormitories/get_all_dormitories' }]} />
 
             <section className="content">
                 <div className="container-fluid">
@@ -195,7 +228,7 @@ const Dormitory = () => {
                                 <i className="fas fa-check-circle mr-2"></i>
                                 <strong>Accommodation Active</strong>
                                 <p className="mb-0" style={{ fontSize: '13px' }}>
-                                    Your stay is confirmed from {new Date(userRequest.tenant_from_date).toLocaleDateString()} to {new Date(userRequest.tenant_to_date).toLocaleDateString()}. 
+                                    Your stay is confirmed from {new Date(userDormitory.tenant_from_date).toLocaleDateString()} to {new Date(userDormitory.tenant_to_date).toLocaleDateString()}. 
                                     You can extend your stay by clicking "Extend Stay" on your room.
                                 </p>
                             </div>
@@ -216,15 +249,15 @@ const Dormitory = () => {
                             <div className="row">
                                 {rooms.map((room) => (
                                     <div key={room.id} className="col-md-6 mb-4">
-                                        <div className="card shadow-sm border-0 h-100" style={{ transition: 'transform 0.2s' }}>
-                                            <div className="card-header bg-white border-bottom-0" style={{ padding: '1.25rem' }}>
+                                        <div className="card shadow-sm border-0 h-100" style={{ transition: 'transform 0.2s', backgroundColor: '#F5F5F5' }}>
+                                            <div className="card-header border-bottom-0" style={{ padding: '1.25rem', backgroundColor: '#dae6f377' }}>
                                                 <div className="d-flex justify-content-between align-items-center">
                                                     <h5 className="mb-0 font-weight-bold">{room.room_name}</h5>
-                                                    <span className={`badge badge-${(room.room_status === 'ACTIVE' || room.room_status === 'AVAILABLE') ? 'success' : 'secondary'} px-3 py-2`} style={{ fontSize: '12px' }}>{room.room_status === 'ACTIVE' ? 'AVAILABLE' : (room.room_status === 'INACTIVE' ? 'UNAVAILABLE' : room.room_status)}</span>
+                                                    <span className={`badge badge-${room.room_status === 'ACTIVE' ? 'success' : 'secondary'} px-3 py-2`} style={{ fontSize: '12px' }}>{room.room_status}</span>
                                                 </div>
                                             </div>
                                             <div className="card-body" style={{ padding: '1.25rem' }}>
-                                                <p className="text-muted mb-3" style={{ fontSize: '14px' }}>{room.description}</p>
+                                                <p className="text-muted mb-3" style={{ fontSize: '14px' }}>{room.room_description}</p>
                                                 
                                                 <div className="row mb-3">
                                                     <div className="col-6">
@@ -255,8 +288,8 @@ const Dormitory = () => {
                                                             className={`form-control form-control-sm ${dateErrors.checkIn ? 'is-invalid' : ''}`} 
                                                             value={checkInDate} 
                                                             onChange={(e) => setCheckInDate(e.target.value)} 
-                                                            min={hasApprovedBooking() && room.id === userRequest.dormitory_room_id ? userRequest.tenant_to_date : new Date().toISOString().split('T')[0]} 
-                                                            disabled={hasPendingRequest() || isExtending() || (hasApprovedBooking() && room.id !== userRequest.dormitory_room_id)} 
+                                                            min={new Date().toISOString().split('T')[0]} 
+                                                            disabled={!canRequestRoom(room)} 
                                                             style={{ fontSize: '13px' }} 
                                                         />
                                                         {dateErrors.checkIn && <div className="invalid-feedback" style={{ fontSize: '11px' }}>{dateErrors.checkIn}</div>}
@@ -268,8 +301,8 @@ const Dormitory = () => {
                                                             className={`form-control form-control-sm ${dateErrors.checkOut ? 'is-invalid' : ''}`} 
                                                             value={checkOutDate} 
                                                             onChange={(e) => setCheckOutDate(e.target.value)} 
-                                                            min={checkInDate || (hasApprovedBooking() && room.id === userRequest.dormitory_room_id ? userRequest.tenant_to_date : new Date().toISOString().split('T')[0])} 
-                                                            disabled={hasPendingRequest() || isExtending() || (hasApprovedBooking() && room.id !== userRequest.dormitory_room_id)} 
+                                                            min={checkInDate || new Date().toISOString().split('T')[0]} 
+                                                            disabled={!canRequestRoom(room)} 
                                                             style={{ fontSize: '13px' }} 
                                                         />
                                                         {dateErrors.checkOut && <div className="invalid-feedback" style={{ fontSize: '11px' }}>{dateErrors.checkOut}</div>}
@@ -281,19 +314,19 @@ const Dormitory = () => {
                                                         <small className="text-muted d-block" style={{ fontSize: '11px' }}>Daily Rate</small>
                                                         <h4 className="mb-0 text-primary font-weight-bold">₱{room.room_cost.toLocaleString()}</h4>
                                                     </div>
-                                                    <button 
-                                                        className={`btn px-4 ${hasApprovedBooking() && room.id === userRequest.dormitory_room_id ? 'btn-success' : 'btn-primary'}`}
-                                                        onClick={() => handleSendRequest(room)} 
-                                                        disabled={!canRequestRoom(room) || (room.room_status !== 'AVAILABLE' && room.room_status !== 'ACTIVE') || room.available_slots === 0} 
+                                                    <button
+                                                        className="btn btn-primary px-4"
+                                                        onClick={() => handleSendRequest(room)}
+                                                        disabled={!canRequestRoom(room)}
                                                         style={{ fontSize: '13px', fontWeight: '600' }}
                                                     >
-                                                        <i className={`fas ${hasApprovedBooking() && room.id === userRequest.dormitory_room_id ? 'fa-calendar-plus' : 'fa-paper-plane'} mr-2`}></i>
+                                                        <i className="fas fa-paper-plane mr-2"></i>
                                                         {getButtonText(room)}
                                                     </button>
                                                 </div>
-                                </div>
-                            </div>
-                        </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         )}
@@ -301,7 +334,7 @@ const Dormitory = () => {
                 </div>
             </section>
 
-            <PaymentMethodModal show={showPaymentModal && !isSubmitting} onClose={handleCloseModal} onSelectPayment={handlePaymentMethodSelect} room={selectedRoom} checkInDate={checkInDate} checkOutDate={checkOutDate} />
+            <PaymentMethodModal show={showPaymentModal && !isSubmitting} onClose={handleCloseModal} onConfirm={handleConfirmRequest} room={selectedRoom} checkInDate={checkInDate} checkOutDate={checkOutDate} />
         </>
     );
 };

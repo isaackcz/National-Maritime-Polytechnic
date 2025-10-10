@@ -29,10 +29,39 @@ const Request = () => {
             setLoading(true);
             const token = getToken('csrf-token');
 
-            const response = await axios.get(`${url}/dormitory-admin/requests`, {
+            // API: GET /dormitory-admin/dormitory/get (existing, working)
+            // RETURNS: { dormitories: Array<DormitoryRoom> }
+            const roomsResponse = await axios.get(`${url}/dormitory-admin/dormitory/get`, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
             });
-            setRequests(response?.data?.requests || []);
+            const rooms = roomsResponse?.data?.dormitories || [];
+
+            // Fetch tenants for each room and combine (workaround - no dedicated requests endpoint)
+            const allRequests = [];
+            for (const room of rooms) {
+                try {
+                    // API: GET /dormitory-admin/dormitory/get/tenants/{room_id} (existing, working)
+                    // RETURNS: { tenants: Array<DormitoryTenant with tenant relation> }
+                    // NOTE: Uses existing table - filters by tenant_status (no new columns)
+                    const tenantsResponse = await axios.get(`${url}/dormitory-admin/dormitory/get/tenants/${room.id}`, {
+                        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+                    });
+                    const tenants = tenantsResponse?.data?.tenants || [];
+                    
+                    // Filter using existing tenant_status enum (PENDING, EXTENDING, APPROVED)
+                    const tenantsWithRoom = tenants
+                        .filter(t => ['PENDING', 'EXTENDING', 'APPROVED'].includes(t.tenant_status))
+                        .map(t => ({
+                            ...t,
+                            dormitory_room: room
+                        }));
+                    allRequests.push(...tenantsWithRoom);
+                } catch (err) {
+                    console.error(`Failed to fetch tenants for room ${room.id}:`, err);
+                }
+            }
+
+            setRequests(allRequests);
         } catch (error) {
             console.error('Failed to fetch requests:', error);
             setRequests([]);
@@ -42,6 +71,16 @@ const Request = () => {
     };
 
     const handleApproveAndSendPaymentLink = async (requestId) => {
+        // API NEEDED: POST /dormitory-admin/requests/{requestId}/approve
+        // POST DATA: {} (empty - request ID in URL)
+        // RESPONSE: { message: string }
+        // UPDATES: DormitoryTenant.tenant_status = 'APPROVED' (uses existing field)
+        // SENDS: Email with payment link (3-day expiration)
+        // NOTE: No database columns added - only updates existing tenant_status field
+        alert('Backend endpoint not implemented yet. Please contact backend developer to create:\nPOST /dormitory-admin/requests/{requestId}/approve');
+        return;
+        
+        /* COMMENTED OUT UNTIL BACKEND IS READY
         if (!window.confirm('Approve this request and send payment link to user\'s email?')) return;
 
         try {
@@ -58,9 +97,19 @@ const Request = () => {
         } catch (error) {
             alert(error?.response?.data?.message || 'Failed to approve request');
         }
+        */
     };
 
     const handleConfirmPayment = async (requestId) => {
+        // API NEEDED: POST /dormitory-admin/requests/{requestId}/confirm-payment
+        // POST DATA: {} (empty - request ID in URL)
+        // RESPONSE: { message: string }
+        // UPDATES: DormitoryInvoice record (marks payment as received)
+        // NOTE: Uses existing tables - no new columns needed
+        alert('Backend endpoint not implemented yet. Please contact backend developer to create:\nPOST /dormitory-admin/requests/{requestId}/confirm-payment');
+        return;
+        
+        /* COMMENTED OUT UNTIL BACKEND IS READY
         if (!window.confirm('Confirm that online payment has been received?')) return;
 
         try {
@@ -77,9 +126,19 @@ const Request = () => {
         } catch (error) {
             alert(error?.response?.data?.message || 'Failed to confirm payment');
         }
+        */
     };
 
     const handleReject = async (requestId) => {
+        // API NEEDED: POST /dormitory-admin/requests/{requestId}/reject
+        // POST DATA: {} (empty - request ID in URL)
+        // RESPONSE: { message: string }
+        // UPDATES: DormitoryTenant.tenant_status = 'TERMINATED' or 'CANCELLED' (uses existing enum)
+        // NOTE: No database columns added - only updates existing tenant_status field
+        alert('Backend endpoint not implemented yet. Please contact backend developer to create:\nPOST /dormitory-admin/requests/{requestId}/reject');
+        return;
+        
+        /* COMMENTED OUT UNTIL BACKEND IS READY
         if (!window.confirm('Reject this request? This action cannot be undone.')) return;
         try {
             const token = getToken('csrf-token');
@@ -95,12 +154,13 @@ const Request = () => {
         } catch (error) {
             alert(error?.response?.data?.message || 'Failed to reject request');
         }
+        */
     };
 
     const requestColumns = [
         {
             name: 'Trainee Name',
-            selector: (row) => `${row.user?.fname || ''} ${row.user?.lname || ''}`.trim() || '—',
+            selector: (row) => `${row.tenant?.fname || ''} ${row.tenant?.lname || ''}`.trim() || '—',
             sortable: true,
         },
         {

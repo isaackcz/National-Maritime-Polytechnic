@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TextField, Button, CircularProgress, MenuItem } from '@mui/material';
+import { TextField, Button, CircularProgress } from '@mui/material';
 import PageName from '../../../components/PageName';
 import NMPDataTable from '../../../components/NMPDataTable/NMPDataTable';
 import SkeletonLoader from '../../../components/SkeletonLoader/SkeletonLoader';
@@ -7,189 +7,58 @@ import NoDataFound from '../../../components/NoDataFound';
 import useSystemURLCon from '../../../../hooks/useSystemURLCon';
 import useGetToken from '../../../../hooks/useGetToken';
 import axios from 'axios';
+import RoomTenantsModal from './RoomTenantsModal';
+import OverdueTenantsModal from './OverdueTenantsModal';
+import useGetCurrentUser from '../../../../hooks/useGetCurrentUser';
 
 const AdminDormitory = () => {
     const { url } = useSystemURLCon();
     const { getToken } = useGetToken();
-
-    const [activeTab, setActiveTab] = useState('capacity'); // capacity | assignments | requests
-
-    // Capacity Management
     const [isFetchingBuildings, setIsFetchingBuildings] = useState(true);
     const [buildings, setBuildings] = useState([]);
-    const [showAddBuildingModal, setShowAddBuildingModal] = useState(false);
+    const [editRowId, setEditRowId] = useState(null);
+    const [editData, setEditData] = useState({});
     const [showAddRoomModal, setShowAddRoomModal] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [selectedBuilding, setSelectedBuilding] = useState(null);
-    const [newBuilding, setNewBuilding] = useState({
-        name: '',
-        total_rooms: '',
-        total_cr: '',
-        daily_rate: '',
-    });
-    const [newRoom, setNewRoom] = useState({
-        building_id: '',
-        room_number: '',
-        capacity: '',
-    });
-    const [buildingErrors, setBuildingErrors] = useState({});
+    const [newRoom, setNewRoom] = useState({ document_id: '', room_name: '', room_description: '' , room_slot: '', room_cost: '', room_status: '' });
     const [roomErrors, setRoomErrors] = useState({});
+    const [showTenantsModal, setShowTenantsModal] = useState(false);
+    const [selectedRoom, setSelectedRoom] = useState(null);
+    const [roomTenants, setRoomTenants] = useState([]);
+    const [showOverdueModal, setShowOverdueModal] = useState(false);
+    const [overdueTenants, setOverdueTenants] = useState([]);
 
-    // Trainee Assignments
-    const [isFetchingAssignments, setIsFetchingAssignments] = useState(false);
-    const [assignments, setAssignments] = useState([]);
-    const [showAssignModal, setShowAssignModal] = useState(false);
-    const [showUpdateModal, setShowUpdateModal] = useState(false);
-    const [selectedAssignment, setSelectedAssignment] = useState(null);
-    const [assignmentType, setAssignmentType] = useState('trainee'); // trainee | trainer
-    const [availableTrainees, setAvailableTrainees] = useState([]);
-    const [availableTrainers, setAvailableTrainers] = useState([]);
-    const [isFetchingAvailable, setIsFetchingAvailable] = useState(false);
-    const [availableRooms, setAvailableRooms] = useState([]);
-    const [isFetchingRooms, setIsFetchingRooms] = useState(false);
-    const [newAssignment, setNewAssignment] = useState({
-        person_id: '',
-        person_type: 'trainee',
-        building_id: '',
-        room_number: '',
-        check_in: '',
-        check_out: '',
-    });
-    const [updateData, setUpdateData] = useState({
-        check_in: '',
-        check_out: '',
-        payment_status: 'unpaid',
-    });
-    const [assignmentErrors, setAssignmentErrors] = useState({});
+    
+    const { userData } = useGetCurrentUser();
 
-    // Reservation Requests
-    const [isFetchingRequests, setIsFetchingRequests] = useState(false);
-    const [requests, setRequests] = useState([]);
-    const [showProcessModal, setShowProcessModal] = useState(false);
-    const [selectedRequest, setSelectedRequest] = useState(null);
-    const [processData, setProcessData] = useState({
-        status: 'approved',
-        building_id: '',
-        room_id: '',
-        check_in: '',
-        check_out: '',
-        payment_status: 'unpaid',
-    });
-
-    const fetchBuildings = async () => {
+    const fetchBuildings = async (isInitialLoad) => {
         try {
-            setIsFetchingBuildings(true);
+            setIsFetchingBuildings(isInitialLoad);
             const token = getToken('csrf-token');
-            const response = await axios.get(`${url}/admin/dormitory/buildings`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                }
+
+            const response = await axios.get(`${url}/dormitory-admin/dormitory/get`, {
+                headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' }
             });
-            const data = response?.data?.data || [];
+            const data = response?.data?.dormitories || [];
             setBuildings(Array.isArray(data) ? data : []);
         } catch (error) {
-            console.warn('Failed to fetch buildings:', error?.response?.data || error?.message);
+            console.log('Failed to fetch buildings:', error.response);
             setBuildings([]);
         } finally {
             setIsFetchingBuildings(false);
         }
     };
 
-    const fetchAssignments = async () => {
-        try {
-            setIsFetchingAssignments(true);
-            const token = getToken('csrf-token');
-            const response = await axios.get(`${url}/admin/dormitory/assignments`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                }
-            });
-            const data = response?.data?.data || [];
-            setAssignments(Array.isArray(data) ? data : []);
-        } catch (error) {
-            console.warn('Failed to fetch assignments:', error?.response?.data || error?.message);
-            setAssignments([]);
-        } finally {
-            setIsFetchingAssignments(false);
-        }
-    };
-
-    const fetchRequests = async () => {
-        try {
-            setIsFetchingRequests(true);
-            const token = getToken('csrf-token');
-            const response = await axios.get(`${url}/admin/dormitory/requests`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                }
-            });
-            const data = response?.data?.data || [];
-            setRequests(Array.isArray(data) ? data : []);
-        } catch (error) {
-            console.warn('Failed to fetch requests:', error?.response?.data || error?.message);
-            setRequests([]);
-        } finally {
-            setIsFetchingRequests(false);
-        }
-    };
-
     useEffect(() => {
-        fetchBuildings();
-        if (activeTab === 'assignments') fetchAssignments();
-        if (activeTab === 'requests') fetchRequests();
-    }, [activeTab]);
-
-    const validateBuilding = () => {
-        const errs = {};
-        if (!newBuilding.name?.trim()) errs.name = 'Required';
-        if (!newBuilding.total_rooms || isNaN(Number(newBuilding.total_rooms))) errs.total_rooms = 'Valid number required';
-        if (!newBuilding.total_cr || isNaN(Number(newBuilding.total_cr))) errs.total_cr = 'Valid number required';
-        if (!newBuilding.daily_rate || isNaN(Number(newBuilding.daily_rate))) errs.daily_rate = 'Valid amount required';
-        setBuildingErrors(errs);
-        return Object.keys(errs).length === 0;
-    };
-
-    const submitAddBuilding = async (e) => {
-        e?.preventDefault?.();
-        if (!validateBuilding()) return;
-        try {
-            setIsSubmitting(true);
-            const token = getToken('csrf-token');
-            const payload = {
-                name: newBuilding.name.trim(),
-                total_rooms: Number(newBuilding.total_rooms),
-                total_cr: Number(newBuilding.total_cr),
-                daily_rate: Number(newBuilding.daily_rate),
-            };
-            const response = await axios.post(`${url}/admin/dormitory/buildings`, payload, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                }
-            });
-            if (response.status === 201 || response.status === 200) {
-                setShowAddBuildingModal(false);
-                await fetchBuildings();
-            }
-        } catch (error) {
-            alert(error?.response?.data?.message || 'Failed to add building');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+        fetchBuildings(true);
+    }, []);
 
     const validateRoom = () => {
         const errs = {};
-        if (!newRoom.building_id) errs.building_id = 'Required';
-        if (!newRoom.room_number?.trim()) errs.room_number = 'Required';
-        if (!newRoom.capacity || isNaN(Number(newRoom.capacity))) errs.capacity = 'Valid number required';
+        if (!newRoom.room_name?.trim()) errs.room_name = 'Required';
+        if (!newRoom.room_description?.trim()) errs.room_description = 'Required';
+        if (!newRoom.room_slot || isNaN(Number(newRoom.room_slot))) errs.room_slot = 'Valid number required';
+        if (!newRoom.room_cost || isNaN(Number(newRoom.room_cost))) errs.room_cost = 'Valid cost required';
         setRoomErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -201,16 +70,14 @@ const AdminDormitory = () => {
             setIsSubmitting(true);
             const token = getToken('csrf-token');
             const payload = {
-                building_id: newRoom.building_id,
-                room_number: newRoom.room_number.trim(),
-                capacity: Number(newRoom.capacity),
+                room_name: newRoom.room_name.trim(),  
+                room_description: newRoom.room_description.trim(), 
+                room_slot: Number(newRoom.room_slot), 
+                room_cost: Number(newRoom.room_cost), 
+                httpMethod: 'POST' 
             };
-            const response = await axios.post(`${url}/admin/dormitory/rooms`, payload, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                }
+            const response = await axios.post(`${url}/dormitory-admin/dormitory/create_or_update_dormitory`, payload, {
+                headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' }
             });
             if (response.status === 201 || response.status === 200) {
                 setShowAddRoomModal(false);
@@ -218,321 +85,255 @@ const AdminDormitory = () => {
             }
         } catch (error) {
             alert(error?.response?.data?.message || 'Failed to add room');
+            console.log('pewpew', error?.response?.data?.message || 'Failed to add room');
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const deleteBuilding = async (id) => {
-        if (!window.confirm('Delete this building? This cannot be undone.')) return;
+    if (!window.confirm('Delete this building? This cannot be undone.')) return;
+    try {
+        const token = getToken('csrf-token');
+                
+        await axios.get(`${url}/dormitory-admin/dormitory/remove/${id}`, {
+                    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+        });
+        await fetchBuildings();
+    } catch (error) {
+        alert(error?.response?.data?.message || 'Failed to delete building');
+    }
+    };
+
+    const startEdit = (row) => {
+    setEditRowId(row.id);
+    setEditData({ ...row });
+    };
+
+    const handleEditChange = (field, value) => {
+    setEditData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const saveBuilding = async (row) => {
+        if (!window.confirm(`Save changes? ${row.id}`)) return;
         try {
             const token = getToken('csrf-token');
-            await axios.delete(`${url}/admin/dormitory/buildings/${id}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
+            const payload = {
+                room_name: editData.room_name.trim(),  
+                room_description: editData.room_description.trim(), 
+                room_slot: Number(editData.room_slot), 
+                room_cost: Number(editData.room_cost), 
+                document_id: editData.id, 
+                httpMethod: 'UPDATE' 
+            };
+            await axios.post(`${url}/dormitory-admin/dormitory/create_or_update_dormitory`, payload, 
+                {
+                    headers: { Authorization: `Bearer ${token}` 
                 }
             });
+            setEditRowId(null);
             await fetchBuildings();
+        } 
+        catch (error) {
+            console.log("alert alert alert", error?.response?.data?.message || 'Failed to update building');
+        }       
+    };
+
+    const cancelEdit = () => {
+        setEditRowId(null);
+    };
+
+    const fetchRoomTenants = async (room) => {
+        try {
+            const token = getToken('csrf-token');
+
+            // API: GET /dormitory-admin/dormitory/get/tenants/{room_id} (existing, working)
+            // RETURNS: { tenants: Array<DormitoryTenant with tenant relation> }
+            // NOTE: Uses existing table columns - tenant includes User model data
+            const response = await axios.get(`${url}/dormitory-admin/dormitory/get/tenants/${room.id}`, {
+                headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+            });
+            setRoomTenants(response?.data?.tenants || []);
         } catch (error) {
-            alert(error?.response?.data?.message || 'Failed to delete building');
+            console.error('Failed to fetch tenants:', error);
+            setRoomTenants([]);
         }
     };
 
-    const submitProcessRequest = async (e) => {
-        e?.preventDefault?.();
-        if (!selectedRequest) return;
+    const handleSlotClick = async (room) => {
+        setSelectedRoom(room);
+        await fetchRoomTenants(room);
+        setShowTenantsModal(true);
+    };
+
+    const fetchOverdueTenants = async (room) => {
         try {
-            setIsSubmitting(true);
             const token = getToken('csrf-token');
-            const payload = {
-                status: processData.status,
-                building_id: processData.building_id,
-                room_id: processData.room_id,
-                check_in: processData.check_in,
-                check_out: processData.check_out,
-                payment_status: processData.payment_status,
-            };
-            const response = await axios.post(`${url}/admin/dormitory/requests/${selectedRequest.id}/process`, payload, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                }
+
+            // API: GET /dormitory-admin/dormitory/get/tenants/{room_id} (existing, working)
+            // RETURNS: { tenants: Array<DormitoryTenant with tenant relation> }
+            // NOTE: Uses existing fields only - no backend endpoint needed for overdue calculation
+            const response = await axios.get(`${url}/dormitory-admin/dormitory/get/tenants/${room.id}`, {
+                headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
             });
-            if (response.status === 200) {
-                setShowProcessModal(false);
-                await fetchRequests();
-            }
+            const tenants = response?.data?.tenants || [];
+            
+            // Calculate overdue client-side using existing fields:
+            // - tenant_status (existing enum field)
+            // - tenant_to_date (existing date field)
+            // NO NEW DATABASE COLUMNS NEEDED
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const overdue = tenants.filter(tenant => {
+                if (tenant.tenant_status !== 'APPROVED') return false;
+                if (!tenant.tenant_to_date) return false;
+                const toDate = new Date(tenant.tenant_to_date);
+                toDate.setHours(0, 0, 0, 0);
+                return today > toDate;
+            });
+            
+            setOverdueTenants(overdue);
         } catch (error) {
-            alert(error?.response?.data?.message || 'Failed to process request');
-        } finally {
-            setIsSubmitting(false);
+            console.error('Failed to fetch overdue tenants:', error);
+            setOverdueTenants([]);
         }
     };
+
+    const handleOverdueClick = async (room) => {
+        setSelectedRoom(room);
+        await fetchOverdueTenants(room);
+        setShowOverdueModal(true);
+    };
+
+    const toggleRoomStatus = async (room) => {
+        const currentStatus = room.room_status;
+        const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+        const confirmMsg = newStatus === 'INACTIVE' 
+            ? 'Disable this room? Tenants will be notified and no new tenants can be accepted.'
+            : 'Enable this room? It will be available for new tenants.';
+
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            const token = getToken('csrf-token');  
+
+            const payload = {
+                room_name: room.room_name.trim(),  
+                room_description: room.room_description?.trim() || '',  
+                room_slot: Number(room.room_slot), 
+                room_cost: Number(room.room_cost), 
+                room_status: newStatus,
+                httpMethod: 'UPDATE',
+                document_id: room.id
+            };  
+
+            console.log("Toggling room status:", payload);
+            setBuildings(prev =>
+            prev.map(r => 
+                r.id === room.id ? { ...r, room_status: newStatus } : r
+                )
+            );
+            const response = await axios.post(
+                `${url}/dormitory-admin/dormitory/create_or_update_dormitory`, 
+                payload,
+                { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+            );
+
+            if (response.status === 200) {
+                await fetchBuildings(true);
+                console.log(`Room ${newStatus === 'INACTIVE' ? 'disabled' : 'enabled'} successfully.`);
+            }
+        } catch (error) {
+            console.error("Error toggling room status:", error);
+        }
+    };
+
+
+    const conditionalRowStyles = [
+        {
+            when: row => row.room_status === 'INACTIVE' || row.room_status === 'UNAVAILABLE',
+            style: {
+                backgroundColor: '#f5f5f5',
+                color: '#999',
+                opacity: '0.8',
+            },
+        },
+    ];
 
     const buildingColumns = [
-        { name: 'Building Name', selector: row => row.name || '—', sortable: true },
-        { name: 'Rooms', selector: row => row.total_rooms || 0, sortable: true, maxWidth: '100px' },
-        { name: 'CR', selector: row => row.total_cr || 0, sortable: true, maxWidth: '100px' },
-        { name: 'Daily Rate', selector: row => row.daily_rate ? `₱${Number(row.daily_rate).toLocaleString()}` : '—', sortable: true },
-        {
-            name: 'Action',
-            selector: row => row.id,
-            cell: (row) => (
-                <div className="btn-group btn-group-sm">
-                    <button type="button" className="btn btn-danger" title="Delete" onClick={() => deleteBuilding(row.id)}>
-                        <i className="fas fa-trash"></i>
-                    </button>
-                </div>
-            ),
-            ignoreRowClick: true,
-            button: true,
-            maxWidth: '100px',
-        },
-    ];
-
-    const openAssignModal = async (type) => {
-        setAssignmentType(type);
-        setNewAssignment({ person_id: '', person_type: type, building_id: '', room_number: '', check_in: '', check_out: '' });
-        setAssignmentErrors({});
-        setAvailableRooms([]);
-        setShowAssignModal(true);
-
-        try {
-            setIsFetchingAvailable(true);
-            const token = getToken('csrf-token');
-            const endpoint = type === 'trainee' ? '/admin/users/trainees' : '/admin/users/trainers';
-            const response = await axios.get(`${url}${endpoint}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                }
-            });
-            const list = response?.data?.data || [];
-            if (type === 'trainee') {
-                setAvailableTrainees(Array.isArray(list) ? list : []);
-            } else {
-                setAvailableTrainers(Array.isArray(list) ? list : []);
-            }
-        } catch (error) {
-            console.warn(`Failed to fetch ${type}s:`, error?.response?.data || error?.message);
-            if (type === 'trainee') {
-                setAvailableTrainees([]);
-            } else {
-                setAvailableTrainers([]);
-            }
-        } finally {
-            setIsFetchingAvailable(false);
-        }
-    };
-
-    const fetchRoomsForBuilding = async (buildingId) => {
-        if (!buildingId) {
-            setAvailableRooms([]);
-            return;
-        }
-
-        try {
-            setIsFetchingRooms(true);
-            const token = getToken('csrf-token');
-            const response = await axios.get(`${url}/admin/dormitory/buildings/${buildingId}/rooms`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                }
-            });
-            const rooms = response?.data?.data || [];
-            setAvailableRooms(Array.isArray(rooms) ? rooms : []);
-        } catch (error) {
-            console.warn('Failed to fetch rooms:', error?.response?.data || error?.message);
-            setAvailableRooms([]);
-        } finally {
-            setIsFetchingRooms(false);
-        }
-    };
-
-    const handleBuildingChange = (buildingId) => {
-        setNewAssignment({ ...newAssignment, building_id: buildingId, room_number: '' });
-        fetchRoomsForBuilding(buildingId);
-    };
-
-    const validateAssignment = () => {
-        const errs = {};
-        if (!newAssignment.person_id) errs.person_id = 'Required';
-        if (!newAssignment.building_id) errs.building_id = 'Required';
-        if (!newAssignment.room_number) errs.room_number = 'Required';
-        if (!newAssignment.check_in) errs.check_in = 'Required';
-        if (!newAssignment.check_out) errs.check_out = 'Required';
-        setAssignmentErrors(errs);
-        return Object.keys(errs).length === 0;
-    };
-
-    const submitAssignment = async (e) => {
-        e?.preventDefault?.();
-        if (!validateAssignment()) return;
-        try {
-            setIsSubmitting(true);
-            const token = getToken('csrf-token');
-            const payload = {
-                person_id: newAssignment.person_id,
-                person_type: newAssignment.person_type,
-                building_id: newAssignment.building_id,
-                room_number: newAssignment.room_number.trim(),
-                check_in: newAssignment.check_in,
-                check_out: newAssignment.check_out,
-            };
-            const response = await axios.post(`${url}/admin/dormitory/assignments`, payload, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                }
-            });
-            if (response.status === 201 || response.status === 200) {
-                setShowAssignModal(false);
-                await fetchAssignments();
-            }
-        } catch (error) {
-            alert(error?.response?.data?.message || 'Failed to create assignment');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const deleteAssignment = async (id) => {
-        if (!window.confirm('Remove this assignment? This cannot be undone.')) return;
-        try {
-            const token = getToken('csrf-token');
-            await axios.delete(`${url}/admin/dormitory/assignments/${id}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                }
-            });
-            await fetchAssignments();
-        } catch (error) {
-            alert(error?.response?.data?.message || 'Failed to delete assignment');
-        }
-    };
-
-    const openUpdateModal = (assignment) => {
-        setSelectedAssignment(assignment);
-        setUpdateData({
-            check_in: assignment.check_in || '',
-            check_out: assignment.check_out || '',
-            payment_status: assignment.payment_status || 'unpaid',
-        });
-        setShowUpdateModal(true);
-    };
-
-    const submitUpdate = async (e) => {
-        e?.preventDefault?.();
-        if (!selectedAssignment) return;
-        try {
-            setIsSubmitting(true);
-            const token = getToken('csrf-token');
-            const payload = {
-                check_in: updateData.check_in,
-                check_out: updateData.check_out,
-                payment_status: updateData.payment_status,
-            };
-            const response = await axios.put(`${url}/admin/dormitory/assignments/${selectedAssignment.id}`, payload, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                }
-            });
-            if (response.status === 200) {
-                setShowUpdateModal(false);
-                await fetchAssignments();
-            }
-        } catch (error) {
-            alert(error?.response?.data?.message || 'Failed to update assignment');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const assignmentColumns = [
-        { name: 'Name', selector: row => row.person_name || '—', sortable: true },
-        { 
-            name: 'Type', 
-            selector: row => row.person_type || '—', 
-            sortable: true,
-            cell: (row) => (
-                <span className={`badge ${row.person_type === 'trainee' ? 'badge-info' : 'badge-success'}`} style={{ fontSize: '10px', textTransform: 'capitalize' }}>
-                    {row.person_type || '—'}
+    {
+        name: 'Room Name',
+            selector: (row) => editRowId === row.id ? (
+                <input type="text" className="form-control form-control-sm" value={editData.room_name || ''} onChange={(e) => handleEditChange('room_name', e.target.value)} />
+            ) : (row.room_name || '—'),
+        sortable: true,
+    },
+    {
+        name: 'Slot',
+            cell: (row) => editRowId === row.id ? (
+                <input type="number" className="form-control form-control-sm" value={editData.room_slot || 0} onChange={(e) => handleEditChange('room_slot', e.target.value)} style={{ width: '80px' }} />
+            ) : (
+                <span onClick={() => handleSlotClick(row)} style={{ cursor: 'pointer', color: '#0078d4', textDecoration: 'underline', fontWeight: '500' }} title="Click to view tenants">
+                    {row.tenants_count || 0}/{row.room_slot || 0}
                 </span>
-            ),
-            maxWidth: '100px',
-        },
-        { name: 'Building', selector: row => row.building_name || '—', sortable: true },
-        { name: 'Room', selector: row => row.room_number || '—', sortable: true, maxWidth: '100px' },
-        { name: 'Check-in', selector: row => row.check_in || '—', sortable: true },
-        { name: 'Check-out', selector: row => row.check_out || '—', sortable: true },
-        { 
-            name: 'Payment', 
-            selector: row => row.payment_status || '—', 
+        ),
+        sortable: true,
+        maxWidth: '100px',
+    },
+    {
+        name: 'Daily Rate',
+            selector: (row) => editRowId === row.id ? (
+                <input type="number" className="form-control form-control-sm" value={editData.room_cost || ''} onChange={(e) => handleEditChange('room_cost', e.target.value)} style={{ width: '100px' }} />
+            ) : (row.room_cost ? `₱${Number(row.room_cost).toLocaleString()}` : '—'),
             sortable: true,
-            cell: (row) => (
-                <span className={`badge ${row.payment_status === 'paid' ? 'badge-success' : row.payment_status === 'partial' ? 'badge-warning' : 'badge-danger'}`} style={{ fontSize: '10px', textTransform: 'capitalize' }}>
-                    {row.payment_status || '—'}
-                </span>
-            ),
         },
         {
-            name: 'Action',
-            selector: row => row.id,
-            cell: (row) => (
-                <div className="btn-group btn-group-sm">
-                    <button type="button" className="btn btn-primary" title="Update" onClick={() => openUpdateModal(row)}>
-                        <i className="fas fa-edit"></i>
-                    </button>
-                    <button type="button" className="btn btn-danger" title="Remove" onClick={() => deleteAssignment(row.id)}>
-                        <i className="fas fa-trash"></i>
-                    </button>
-                </div>
-            ),
-            ignoreRowClick: true,
-            button: true,
+            name: 'Status',
+            cell: (row) => {
+                const status = row.room_status === 'ACTIVE' ? 'AVAILABLE' : (row.room_status === 'INACTIVE' ? 'UNAVAILABLE' : row.room_status);
+                return <span className={`badge badge-${status === 'AVAILABLE' ? 'success' : 'secondary'}`}>{status}</span>;
+            },
+            sortable: true,
             maxWidth: '120px',
         },
-    ];
-
-    const requestColumns = [
-        { name: 'Trainee', selector: row => row.trainee_name || '—', sortable: true },
-        { name: 'Requested Date', selector: row => row.requested_date || '—', sortable: true },
-        { name: 'Status', selector: row => row.status || 'pending', sortable: true },
         {
-            name: 'Action',
-            selector: row => row.id,
+            name: 'Overdue',
             cell: (row) => (
                 <button 
                     type="button" 
-                    className="btn btn-sm btn-primary" 
-                    onClick={() => {
-                        setSelectedRequest(row);
-                        setProcessData({ 
-                            status: 'approved', 
-                            building_id: '', 
-                            room_id: '', 
-                            check_in: '', 
-                            check_out: '', 
-                            payment_status: 'unpaid' 
-                        });
-                        setShowProcessModal(true);
-                    }}
+                    className="btn btn-sm btn-outline-warning" 
+                    onClick={() => handleOverdueClick(row)}
+                    style={{ fontSize: '11px', padding: '2px 8px' }}
+                    title="Check for overdue tenants"
                 >
-                    <i className="fas fa-check mr-1"></i>
-                    Process
+                    <i className="fas fa-clock mr-1"></i>
+                    Check
                 </button>
             ),
             ignoreRowClick: true,
             button: true,
+            maxWidth: '100px',
         },
+    {
+        name: 'Action',
+            cell: (row) => editRowId === row.id ? (
+            <div className="btn-group btn-group-sm">
+                    <button type="button" className="btn btn-success" title="Save 2" onClick={() => saveBuilding(row)}><i className="fas fa-save"></i></button>
+                    <button type="button" className="btn btn-secondary" title="Cancel" onClick={cancelEdit}><i className="fas fa-times"></i></button>
+            </div>
+        ) : (
+            <div className="btn-group btn-group-sm">
+                    <button type="button" className="btn btn-info" title="Edit" onClick={() => startEdit(row)}><i className="fas fa-user-edit"></i></button>
+                    <button type="button" className={`btn btn-${row.room_status === 'ACTIVE' ? 'warning' : 'success'}`} title={row.room_status === 'ACTIVE' ? 'Disable Room' : 'Enable Room'} 
+                    onClick={() => toggleRoomStatus(row)}><i className={`fas fa-${row.room_status === 'ACTIVE' ? 'ban' : 'check-circle'}`}></i></button>
+                    {row.tenants_count === 0 && <button type="button" className="btn btn-danger" title="Delete" onClick={() => deleteBuilding(row.id)}><i className="fas fa-trash"></i></button>}
+            </div>
+        ),
+        ignoreRowClick: true,
+        button: true,
+            maxWidth: '160px',
+    },
     ];
 
     return (
@@ -541,404 +342,74 @@ const AdminDormitory = () => {
 
             <section className="content">
                 <div className="container-fluid">
-                    <div className="row fade-up">
                         <div className="col-xl-12">
                             <div className="alert alert-info border-0 shadow-sm mb-4" style={{ backgroundColor: '#e7f3ff', borderLeft: '4px solid #0078d4' }}>
-                                <div className="row align-items-center">
-                                    <div className="col-auto">
-                                        <span className="fas fa-info-circle text-primary" style={{ fontSize: '24px' }}></span>
-                                    </div>
-                                    <div className="col" style={{ fontSize: '13px', lineHeight: '1.6', color: 'black' }}>
-                                        <strong className="d-block mb-1">Manage Dormitory</strong>
-                                        Manage building capacity, trainee room assignments, and reservation requests.
-                                    </div>
-                                </div>
+                            <span className="fas fa-info-circle text-primary mr-3" style={{ fontSize: '24px' }}></span>
+                            <strong style={{ color: "black" }}>Manage Dormitory</strong>
+                            <p className="mb-0" style={{ fontSize: '13px', color: "black" }}>Manage building capacity, trainee room assignments, and reservation requests.</p>
                             </div>
 
-                            <div className="card card-primary card-outline card-outline-tabs shadow-sm border-0">
-                                <div className="card-header p-0 border-bottom-0" style={{ backgroundColor: '#fafafa' }}>
-                                    <div className="d-flex flex-column flex-lg-row justify-content-between align-items-stretch align-items-lg-center" style={{ padding: '0 0.75rem 0 0.75rem' }}>
-                                        <ul className="nav nav-tabs flex-nowrap overflow-auto" role="tablist" style={{ borderBottom: '2px solid #e5e5e5', width: '100%', maxWidth: '100%' }}>
-                                            <li className="nav-item">
-                                                <a
-                                                    className={`nav-link ${activeTab === 'capacity' ? 'active' : ''}`}
-                                                    data-toggle="pill"
-                                                    href="#tab-capacity"
-                                                    role="tab"
-                                                    aria-selected={activeTab === 'capacity'}
-                                                    onClick={() => setActiveTab('capacity')}
-                                                    style={{ fontSize: '13px', fontWeight: '500', padding: '0.75rem 0.75rem', border: 'none', borderBottom: '3px solid transparent', transition: 'all 0.3s ease', whiteSpace: 'nowrap' }}
-                                                >
-                                                    <span className="fas fa-building mr-1 mr-md-2" style={{ fontSize: '12px' }}></span>
-                                                    <span className="d-none d-sm-inline">Capacity</span>
-                                                    <span className="d-inline d-sm-none">Capacity</span>
-                                                </a>
-                                            </li>
-                                            <li className="nav-item">
-                                                <a
-                                                    className={`nav-link ${activeTab === 'assignments' ? 'active' : ''}`}
-                                                    data-toggle="pill"
-                                                    href="#tab-assignments"
-                                                    role="tab"
-                                                    aria-selected={activeTab === 'assignments'}
-                                                    onClick={() => setActiveTab('assignments')}
-                                                    style={{ fontSize: '13px', fontWeight: '500', padding: '0.75rem 0.75rem', border: 'none', borderBottom: '3px solid transparent', transition: 'all 0.3s ease', whiteSpace: 'nowrap' }}
-                                                >
-                                                    <span className="fas fa-bed mr-1 mr-md-2" style={{ fontSize: '12px' }}></span>
-                                                    <span className="d-none d-sm-inline">Assignments</span>
-                                                    <span className="d-inline d-sm-none">Assign</span>
-                                                </a>
-                                            </li>
-                                            <li className="nav-item">
-                                                <a
-                                                    className={`nav-link ${activeTab === 'requests' ? 'active' : ''}`}
-                                                    data-toggle="pill"
-                                                    href="#tab-requests"
-                                                    role="tab"
-                                                    aria-selected={activeTab === 'requests'}
-                                                    onClick={() => setActiveTab('requests')}
-                                                    style={{ fontSize: '13px', fontWeight: '500', padding: '0.75rem 0.75rem', border: 'none', borderBottom: '3px solid transparent', transition: 'all 0.3s ease', whiteSpace: 'nowrap' }}
-                                                >
-                                                    <span className="fas fa-clipboard-list mr-1 mr-md-2" style={{ fontSize: '12px' }}></span>
-                                                    <span className="d-none d-sm-inline">Requests</span>
-                                                    <span className="d-inline d-sm-none">Requests</span>
-                                                </a>
-                                            </li>
-                                        </ul>
-
-                                        <div className="d-flex align-items-center mt-2 mt-lg-0 ml-lg-3" style={{ gap: '0.5rem', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>
-                                            {activeTab === 'capacity' && (
-                                                <>
-                                                    <button type="button" className="btn btn-success btn-sm" onClick={() => {
-                                                        setNewRoom({ building_id: '', room_number: '', capacity: '' });
-                                                        setRoomErrors({});
-                                                        setShowAddRoomModal(true);
-                                                    }} style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>
-                                                        <i className="fas fa-door-open mr-1"></i>
-                                                        <span className="d-none d-md-inline">Add </span>Room
-                                                    </button>
-                                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => {
-                                                        setNewBuilding({ name: '', total_rooms: '', total_cr: '', daily_rate: '' });
-                                                        setBuildingErrors({});
-                                                        setShowAddBuildingModal(true);
-                                                    }} style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>
-                                                        <i className="fas fa-plus mr-1"></i>
-                                                        <span className="d-none d-md-inline">Add </span>Building
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="card-body" style={{ padding: '1.5rem', backgroundColor: '#ffffff' }}>
-                                    <div className="tab-content">
-                                        {/* Capacity Management Tab */}
-                                        <div className={`tab-pane fade ${activeTab === 'capacity' ? 'show active' : ''}`} id="tab-capacity" role="tabpanel">
-                                            <div className="card shadow-sm border-0">
-                                                <div className="card-header bg-white border-bottom" style={{ padding: '1rem 1.5rem' }}>
-                                                    <h6 className="mb-0 font-weight-bold" style={{ color: '#323130' }}>
-                                                        <i className="fas fa-building mr-2 text-primary"></i>
-                                                        Buildings & Capacity
-                                                    </h6>
+                        <div className="card shadow-sm border-0">
+                            <div className="card-header d-flex justify-content-between align-items-center" style={{ backgroundColor: "#fafafa", borderBottom: "2px solid #e5e5e5", padding: "0.75rem 1rem" }}>
+                                <h6 className="mb-0" style={{ fontSize: "14px", fontWeight: "600", color: "#333" }}>
+                                    <span className="fas fa-building text-success mr-2"></span>
+                                        Capacity Management
+                                        </h6>
+                                <button type="button" className="btn btn-success btn-sm" onClick={() => { setNewRoom({ document_id: "", room_name: "", room_description: "", room_slot: "", room_cost: "" }); setRoomErrors({}); setShowAddRoomModal(true); }} style={{ fontSize: "12px" }}>
+                                        <i className="fas fa-door-open mr-1"></i>
+                                        <span className="d-none d-md-inline">Add </span>Room
+                                        </button>
                                                 </div>
                                                 <div className="card-body p-3">
-                                                    {isFetchingBuildings ? (
-                                                        <SkeletonLoader />
-                                                    ) : buildings.length > 0 ? (
-                                                        <div className="table-responsive">
-                                                            <NMPDataTable
-                                                                progressPending={isFetchingBuildings}
-                                                                columns={buildingColumns}
-                                                                data={buildings}
-                                                                selectableRows={false}
-                                                            />
-                                                        </div>
-                                                    ) : (
-                                                        <NoDataFound />
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Trainee Assignments Tab */}
-                                        <div className={`tab-pane fade ${activeTab === 'assignments' ? 'show active' : ''}`} id="tab-assignments" role="tabpanel">
-                                            <div className="card shadow-sm border-0">
-                                                <div className="card-header bg-white border-bottom d-flex justify-content-between align-items-center" style={{ padding: '1rem 1.5rem' }}>
-                                                    <h6 className="mb-0 font-weight-bold" style={{ color: '#323130' }}>
-                                                        <i className="fas fa-bed mr-2 text-primary"></i>
-                                                        Trainee & Trainer Assignments
-                                                    </h6>
-                                                    <div>
-                                                        <button type="button" className="btn btn-success btn-sm mr-2" onClick={() => openAssignModal('trainee')}>
-                                                            <i className="fas fa-user-plus mr-1"></i> Add Trainee
-                                                        </button>
-                                                        <button type="button" className="btn btn-primary btn-sm" onClick={() => openAssignModal('trainer')}>
-                                                            <i className="fas fa-chalkboard-teacher mr-1"></i> Add Trainer
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div className="card-body p-3">
-                                                    {isFetchingAssignments ? (
-                                                        <SkeletonLoader />
-                                                    ) : assignments.length > 0 ? (
-                                                        <div className="table-responsive">
-                                                            <NMPDataTable
-                                                                progressPending={isFetchingAssignments}
-                                                                columns={assignmentColumns}
-                                                                data={assignments}
-                                                                selectableRows={false}
-                                                            />
-                                                        </div>
-                                                    ) : (
-                                                        <NoDataFound />
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Reservation Requests Tab */}
-                                        <div className={`tab-pane fade ${activeTab === 'requests' ? 'show active' : ''}`} id="tab-requests" role="tabpanel">
-                            <div className="card shadow-sm border-0">
-                                                <div className="card-header bg-white border-bottom" style={{ padding: '1rem 1.5rem' }}>
-                                                    <h6 className="mb-0 font-weight-bold" style={{ color: '#323130' }}>
-                                                        <i className="fas fa-clipboard-list mr-2 text-primary"></i>
-                                                        Reservation Requests
-                                                    </h6>
-                                                </div>
-                                                <div className="card-body p-3">
-                                                    {isFetchingRequests ? (
-                                                        <SkeletonLoader />
-                                                    ) : requests.length > 0 ? (
-                                                        <div className="table-responsive">
-                                                            <NMPDataTable
-                                                                progressPending={isFetchingRequests}
-                                                                columns={requestColumns}
-                                                                data={requests}
-                                                                selectableRows={false}
-                                                            />
-                                                        </div>
-                                                    ) : (
-                                                        <NoDataFound />
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                {isFetchingBuildings ? <SkeletonLoader /> : buildings.length > 0 ? <NMPDataTable progressPending={isFetchingBuildings} columns={buildingColumns} data={buildings} selectableRows={false} conditionalRowStyles={conditionalRowStyles} /> : <NoDataFound />}
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Add Building Modal */}
-            {showAddBuildingModal && (
-                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }} role="dialog" aria-modal="true" onClick={() => !isSubmitting && setShowAddBuildingModal(false)}>
-                    <div className="modal-dialog modal-dialog-scrollable modal-lg modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-content border-0 shadow-lg" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-                            <div className="modal-header border-0" style={{ 
-                                background: 'linear-gradient(135deg, #0078d4 0%, #005a9e 100%)',
-                                padding: '1.5rem 2rem',
-                                color: 'white'
-                            }}>
-                                <div className="d-flex align-items-center justify-content-between w-100">
-                                    <div className="d-flex align-items-center">
-                                        <div className="bg-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" 
-                                            style={{ width: '50px', height: '50px' }}>
-                                            <i className="fas fa-building text-primary" style={{ fontSize: '1.2rem' }}></i>
-                                        </div>
-                                        <div>
-                                            <h5 className="mb-1 font-weight-bold text-white">Add Building</h5>
-                                            <p className="mb-0 text-white-50" style={{ fontSize: '13px' }}>
-                                                Enter building capacity details
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button type="button" className="close text-white" onClick={() => !isSubmitting && setShowAddBuildingModal(false)} aria-label="Close" style={{ opacity: 1 }} disabled={isSubmitting}>
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <form onSubmit={submitAddBuilding}>
-                                <div className="modal-body" style={{ backgroundColor: '#ffffff', padding: '2rem' }}>
-                                    <div className="card shadow-sm border-0 mb-4" style={{ backgroundColor: '#fafafa' }}>
-                                        <div className="card-body p-4">
-                                            <h6 className="mb-3 font-weight-bold" style={{ color: '#323130' }}>
-                                                <i className="fas fa-info-circle mr-2 text-primary"></i>
-                                                Building Information
-                                            </h6>
-                                            <div className="row">
-                                                <div className="col-12 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        size="small"
-                                                        label="Building Name"
-                                                        value={newBuilding.name}
-                                                        onChange={(e) => setNewBuilding({ ...newBuilding, name: e.target.value })}
-                                                        error={Boolean(buildingErrors.name)}
-                                                        helperText={buildingErrors.name || ''}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="card shadow-sm border-0" style={{ backgroundColor: '#fafafa' }}>
-                                        <div className="card-body p-4">
-                                            <h6 className="mb-2 font-weight-bold" style={{ color: '#323130' }}>
-                                                <i className="fas fa-layer-group mr-2 text-primary"></i>
-                                                Capacity & Rate
-                                            </h6>
-                                            <p className="text-muted mb-3" style={{ fontSize: '12px' }}>Set the total capacity and daily rate.</p>
-                                            <div className="row">
-                                                <div className="col-12 col-sm-6 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        size="small"
-                                                        type="number"
-                                                        label="Total Rooms"
-                                                        value={newBuilding.total_rooms}
-                                                        onChange={(e) => setNewBuilding({ ...newBuilding, total_rooms: e.target.value })}
-                                                        error={Boolean(buildingErrors.total_rooms)}
-                                                        helperText={buildingErrors.total_rooms || ''}
-                                                        inputProps={{ min: 0 }}
-                                                    />
-                                                </div>
-                                                <div className="col-12 col-sm-6 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        size="small"
-                                                        type="number"
-                                                        label="Comfort Rooms"
-                                                        value={newBuilding.total_cr}
-                                                        onChange={(e) => setNewBuilding({ ...newBuilding, total_cr: e.target.value })}
-                                                        error={Boolean(buildingErrors.total_cr)}
-                                                        helperText={buildingErrors.total_cr || ''}
-                                                        inputProps={{ min: 0 }}
-                                                    />
-                                                </div>
-                                                <div className="col-12 col-sm-16 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        size="small"
-                                                        type="number"
-                                                        label="Daily Rate (₱)"
-                                                        value={newBuilding.daily_rate}
-                                                        onChange={(e) => setNewBuilding({ ...newBuilding, daily_rate: e.target.value })}
-                                                        error={Boolean(buildingErrors.daily_rate)}
-                                                        helperText={buildingErrors.daily_rate || ''}
-                                                        inputProps={{ min: 0 }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="modal-footer border-0" style={{ backgroundColor: '#fafafa', padding: '1rem 2rem' }}>
-                                    <button type="button" className="btn btn-secondary shadow-sm px-4 py-2" onClick={() => !isSubmitting && setShowAddBuildingModal(false)} style={{ fontSize: '13px', fontWeight: '600', borderRadius: '4px' }} disabled={isSubmitting}>
-                                        <i className="fas fa-times mr-2"></i>
-                                        Cancel
-                                    </button>
-                                    <Button type="submit" variant="contained" color="primary" disabled={isSubmitting}>
-                                        {isSubmitting ? <CircularProgress size={18} color="inherit" /> : 'Save Building'}
-                                    </Button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Add Room Modal */}
             {showAddRoomModal && (
-                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }} role="dialog" aria-modal="true" onClick={() => !isSubmitting && setShowAddRoomModal(false)}>
-                    <div className="modal-dialog modal-dialog-scrollable modal-md modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-content border-0 shadow-lg" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-                            <div className="modal-header border-0" style={{ 
-                                background: 'linear-gradient(135deg, #28a745 0%, #20883b 100%)',
-                                padding: '1.5rem 2rem',
-                                color: 'white'
-                            }}>
-                                <div className="d-flex align-items-center justify-content-between w-100">
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }} onClick={() => !isSubmitting && setShowAddRoomModal(false)}>
+                    <div className="modal-dialog modal-md modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-content border-0 shadow-lg">
+                            <div className="modal-header border-0 d-flex justify-content-between" style={{ background: 'linear-gradient(135deg, #28a745 0%, #20883b 100%)', padding: '1.5rem 2rem' }}>
                                     <div className="d-flex align-items-center">
-                                        <div className="bg-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" 
-                                            style={{ width: '50px', height: '50px' }}>
+                                    <div className="bg-white rounded-circle d-flex align-items-center justify-content-center mr-3" style={{ width: '50px', height: '50px' }}>
                                             <i className="fas fa-door-open text-success" style={{ fontSize: '1.2rem' }}></i>
                                         </div>
                                         <div>
                                             <h5 className="mb-1 font-weight-bold text-white">Add Room</h5>
-                                            <p className="mb-0 text-white-50" style={{ fontSize: '13px' }}>
-                                                Add a new room to a building
-                                            </p>
+                                        <p className="mb-0 text-white-50" style={{ fontSize: '13px' }}>Add a new room to a building</p>
                                         </div>
                                     </div>
-                                    <button type="button" className="close text-white" onClick={() => !isSubmitting && setShowAddRoomModal(false)} aria-label="Close" style={{ opacity: 1 }} disabled={isSubmitting}>
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
+                                <button type="button" className="close text-white" onClick={() => !isSubmitting && setShowAddRoomModal(false)} disabled={isSubmitting} style={{ opacity: 1 }}><span>&times;</span></button>
                             </div>
 
                             <form onSubmit={submitAddRoom}>
-                                <div className="modal-body" style={{ backgroundColor: '#ffffff', padding: '2rem' }}>
-                                    <div className="card shadow-sm border-0" style={{ backgroundColor: '#fafafa' }}>
-                                        <div className="card-body p-4">
-                                            <h6 className="mb-3 font-weight-bold" style={{ color: '#323130' }}>
-                                                <i className="fas fa-door-open mr-2 text-primary"></i>
-                                                Room Details
-                                            </h6>
-                                            <div className="row">
-                                                <div className="col-12 mb-3">
-                                                    <TextField
-                                                        select
-                                                        fullWidth
-                                                        size="small"
-                                                        label="Building"
-                                                        value={newRoom.building_id}
-                                                        onChange={(e) => setNewRoom({ ...newRoom, building_id: e.target.value })}
-                                                        error={Boolean(roomErrors.building_id)}
-                                                        helperText={roomErrors.building_id || ''}
-                                                    >
-                                                        {buildings.map((b) => (
-                                                            <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
-                                                        ))}
-                                                    </TextField>
-                                                </div>
-                                                <div className="col-12 col-sm-6 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        size="small"
-                                                        label="Room Number"
-                                                        value={newRoom.room_number}
-                                                        onChange={(e) => setNewRoom({ ...newRoom, room_number: e.target.value })}
-                                                        error={Boolean(roomErrors.room_number)}
-                                                        helperText={roomErrors.room_number || ''}
-                                                    />
-                                                </div>
-                                                <div className="col-12 col-sm-6 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        size="small"
-                                                        type="number"
-                                                        label="Capacity"
-                                                        value={newRoom.capacity}
-                                                        onChange={(e) => setNewRoom({ ...newRoom, capacity: e.target.value })}
-                                                        error={Boolean(roomErrors.capacity)}
-                                                        helperText={roomErrors.capacity || ''}
-                                                        inputProps={{ min: 1 }}
-                                                    />
-                                                </div>
-                                            </div>
+                                <div className="modal-body" style={{ padding: '2rem' }}>
+                                    <h6 className="mb-3 font-weight-bold" style={{ color: '#323130' }}>
+                                        <i className="fas fa-door-open mr-2 text-primary"></i>
+                                        Room Details
+                                    </h6>
+                                    <div className="row">
+                                        <div className="col-12 col-sm-12 mb-3">
+                                            <TextField fullWidth size="small" label="Room Name" value={newRoom.room_name} onChange={(e) => setNewRoom({ ...newRoom, room_name: e.target.value })} error={Boolean(roomErrors.room_name)} helperText={roomErrors.room_name || ''} />
+                                        </div>
+                                        <div className="col-12 mb-3">
+                                            <TextField fullWidth size="small" multiline rows={3} label="Description" value={newRoom.room_description} onChange={(e) => setNewRoom({ ...newRoom, room_description: e.target.value })} error={Boolean(roomErrors.room_description)} helperText={roomErrors.room_description || ''} />
+                                        </div>
+                                        <div className="col-12 col-sm-6 mb-3">
+                                            <TextField fullWidth size="small" type="number" label="Capacity" value={newRoom.room_slot} onChange={(e) => setNewRoom({ ...newRoom, room_slot: e.target.value })} error={Boolean(roomErrors.room_slot)} helperText={roomErrors.room_slot || ''} inputProps={{ min: 1 }} />
+                                        </div>
+                                        <div className="col-12 col-sm-6 mb-3">
+                                            <TextField fullWidth size="small" label="Room Cost (₱)" type="number" value={newRoom.room_cost} onChange={(e) => setNewRoom({ ...newRoom, room_cost: e.target.value })} error={Boolean(roomErrors.room_cost)} helperText={roomErrors.room_cost || ''} />
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="modal-footer border-0" style={{ backgroundColor: '#fafafa', padding: '1rem 2rem' }}>
-                                    <button type="button" className="btn btn-secondary shadow-sm px-4 py-2" onClick={() => !isSubmitting && setShowAddRoomModal(false)} style={{ fontSize: '13px', fontWeight: '600', borderRadius: '4px' }} disabled={isSubmitting}>
-                                        <i className="fas fa-times mr-2"></i>
-                                        Cancel
+                                    <button type="button" className="btn btn-secondary px-4 py-2" onClick={() => !isSubmitting && setShowAddRoomModal(false)} disabled={isSubmitting} style={{ fontSize: '13px', fontWeight: '600' }}>
+                                        <i className="fas fa-times mr-2"></i>Cancel
                                     </button>
                                     <Button type="submit" variant="contained" color="success" disabled={isSubmitting}>
                                         {isSubmitting ? <CircularProgress size={18} color="inherit" /> : 'Save Room'}
@@ -950,438 +421,8 @@ const AdminDormitory = () => {
                 </div>
             )}
 
-            {/* Process Reservation Request Modal */}
-            {showProcessModal && selectedRequest && (
-                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }} role="dialog" aria-modal="true" onClick={() => !isSubmitting && setShowProcessModal(false)}>
-                    <div className="modal-dialog modal-dialog-scrollable modal-lg modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-content border-0 shadow-lg" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-                            <div className="modal-header border-0" style={{ 
-                                background: 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)',
-                                padding: '1.5rem 2rem',
-                                color: 'white'
-                            }}>
-                                <div className="d-flex align-items-center justify-content-between w-100">
-                                    <div className="d-flex align-items-center">
-                                        <div className="bg-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" 
-                                            style={{ width: '50px', height: '50px' }}>
-                                            <i className="fas fa-check-circle text-info" style={{ fontSize: '1.2rem' }}></i>
-                                        </div>
-                                        <div>
-                                            <h5 className="mb-1 font-weight-bold text-white">Process Reservation</h5>
-                                            <p className="mb-0 text-white-50" style={{ fontSize: '13px' }}>
-                                                {selectedRequest.trainee_name}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button type="button" className="close text-white" onClick={() => !isSubmitting && setShowProcessModal(false)} aria-label="Close" style={{ opacity: 1 }} disabled={isSubmitting}>
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <form onSubmit={submitProcessRequest}>
-                                <div className="modal-body" style={{ backgroundColor: '#ffffff', padding: '2rem' }}>
-                                    <div className="card shadow-sm border-0 mb-4" style={{ backgroundColor: '#fafafa' }}>
-                                        <div className="card-body p-4">
-                                            <h6 className="mb-3 font-weight-bold" style={{ color: '#323130' }}>
-                                                <i className="fas fa-clipboard-check mr-2 text-primary"></i>
-                                                Assignment Details
-                                            </h6>
-                                            <div className="row">
-                                                <div className="col-12 col-sm-6 mb-3">
-                                                    <TextField
-                                                        select
-                                                        fullWidth
-                                                        size="small"
-                                                        label="Status"
-                                                        value={processData.status}
-                                                        onChange={(e) => setProcessData({ ...processData, status: e.target.value })}
-                                                    >
-                                                        <MenuItem value="approved">Approved</MenuItem>
-                                                        <MenuItem value="rejected">Rejected</MenuItem>
-                                                    </TextField>
-                                                </div>
-                                                <div className="col-12 col-sm-6 mb-3">
-                                                    <TextField
-                                                        select
-                                                        fullWidth
-                                                        size="small"
-                                                        label="Building"
-                                                        value={processData.building_id}
-                                                        onChange={(e) => setProcessData({ ...processData, building_id: e.target.value })}
-                                                    >
-                                                        {buildings.map((b) => (
-                                                            <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
-                                                        ))}
-                                                    </TextField>
-                                                </div>
-                                                <div className="col-12 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        size="small"
-                                                        label="Room ID"
-                                                        placeholder="Enter room ID"
-                                                        value={processData.room_id}
-                                                        onChange={(e) => setProcessData({ ...processData, room_id: e.target.value })}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="card shadow-sm border-0" style={{ backgroundColor: '#fafafa' }}>
-                                        <div className="card-body p-4">
-                                            <h6 className="mb-2 font-weight-bold" style={{ color: '#323130' }}>
-                                                <i className="fas fa-calendar-alt mr-2 text-primary"></i>
-                                                Stay Duration & Payment
-                                            </h6>
-                                            <p className="text-muted mb-3" style={{ fontSize: '12px' }}>Set check-in/out dates and payment status.</p>
-                                            <div className="row">
-                                                <div className="col-12 col-sm-6 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        size="small"
-                                                        type="date"
-                                                        label="Check-in"
-                                                        InputLabelProps={{ shrink: true }}
-                                                        value={processData.check_in}
-                                                        onChange={(e) => setProcessData({ ...processData, check_in: e.target.value })}
-                                                    />
-                                                </div>
-                                                <div className="col-12 col-sm-6 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        size="small"
-                                                        type="date"
-                                                        label="Check-out"
-                                                        InputLabelProps={{ shrink: true }}
-                                                        value={processData.check_out}
-                                                        onChange={(e) => setProcessData({ ...processData, check_out: e.target.value })}
-                                                    />
-                                                </div>
-                                                <div className="col-12 mb-3">
-                                                    <TextField
-                                                        select
-                                                        fullWidth
-                                                        size="small"
-                                                        label="Payment Status"
-                                                        value={processData.payment_status}
-                                                        onChange={(e) => setProcessData({ ...processData, payment_status: e.target.value })}
-                                                    >
-                                                        <MenuItem value="unpaid">Unpaid</MenuItem>
-                                                        <MenuItem value="partial">Partial</MenuItem>
-                                                        <MenuItem value="paid">Paid</MenuItem>
-                                                    </TextField>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="modal-footer border-0" style={{ backgroundColor: '#fafafa', padding: '1rem 2rem' }}>
-                                    <button type="button" className="btn btn-secondary shadow-sm px-4 py-2" onClick={() => !isSubmitting && setShowProcessModal(false)} style={{ fontSize: '13px', fontWeight: '600', borderRadius: '4px' }} disabled={isSubmitting}>
-                                        <i className="fas fa-times mr-2"></i>
-                                        Cancel
-                                    </button>
-                                    <Button type="submit" variant="contained" style={{ backgroundColor: '#17a2b8' }} disabled={isSubmitting}>
-                                        {isSubmitting ? <CircularProgress size={18} color="inherit" /> : 'Process Request'}
-                                    </Button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Add Assignment Modal */}
-            {showAssignModal && (
-                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }} role="dialog" aria-modal="true" onClick={() => !isSubmitting && setShowAssignModal(false)}>
-                    <div className="modal-dialog modal-dialog-scrollable modal-lg modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-content border-0 shadow-lg" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-                            <div className="modal-header border-0" style={{ 
-                                background: assignmentType === 'trainee' ? 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)' : 'linear-gradient(135deg, #0078d4 0%, #005a9e 100%)',
-                                padding: '1.5rem 2rem',
-                                color: 'white'
-                            }}>
-                                <div className="d-flex align-items-center justify-content-between w-100">
-                                    <div className="d-flex align-items-center">
-                                        <div className="bg-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" 
-                                            style={{ width: '50px', height: '50px' }}>
-                                            <i className={`fas ${assignmentType === 'trainee' ? 'fa-user-plus' : 'fa-chalkboard-teacher'} ${assignmentType === 'trainee' ? 'text-success' : 'text-primary'}`} style={{ fontSize: '1.2rem' }}></i>
-                                        </div>
-                                        <h5 className="mb-0 font-weight-bold" style={{ fontSize: '18px', letterSpacing: '0.3px' }}>
-                                            Add {assignmentType === 'trainee' ? 'Trainee' : 'Trainer'} to Dormitory
-                                        </h5>
-                                    </div>
-                                    <button type="button" className="close text-white" onClick={() => !isSubmitting && setShowAssignModal(false)} disabled={isSubmitting}>
-                                        <span>&times;</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <form onSubmit={submitAssignment}>
-                                <div className="modal-body" style={{ backgroundColor: '#f8f9fa', padding: '2rem' }}>
-                                    {/* Person Selection */}
-                                    <div className="card shadow-sm border-0 mb-3">
-                                        <div className="card-body" style={{ padding: '1.5rem' }}>
-                                            <div className="d-flex align-items-center mb-3">
-                                                <i className={`fas ${assignmentType === 'trainee' ? 'fa-user' : 'fa-chalkboard-teacher'} ${assignmentType === 'trainee' ? 'text-success' : 'text-primary'} mr-2`} style={{ fontSize: '1.1rem' }}></i>
-                                                <h6 className="mb-0 font-weight-bold" style={{ color: '#323130' }}>
-                                                    {assignmentType === 'trainee' ? 'Trainee' : 'Trainer'} Information
-                                                </h6>
-                                            </div>
-                                            <div className="row">
-                                                <div className="col-12">
-                                                    <TextField
-                                                        select
-                                                        fullWidth
-                                                        label={`Select ${assignmentType === 'trainee' ? 'Trainee' : 'Trainer'}`}
-                                                        size="small"
-                                                        value={newAssignment.person_id}
-                                                        onChange={(e) => setNewAssignment({ ...newAssignment, person_id: e.target.value })}
-                                                        error={!!assignmentErrors.person_id}
-                                                        helperText={assignmentErrors.person_id}
-                                                        disabled={isFetchingAvailable || isSubmitting}
-                                                    >
-                                                        {isFetchingAvailable ? (
-                                                            <MenuItem disabled><CircularProgress size={16} /> Loading...</MenuItem>
-                                                        ) : (
-                                                            (assignmentType === 'trainee' ? availableTrainees : availableTrainers).map((person) => (
-                                                                <MenuItem key={person.id} value={person.id}>
-                                                                    {person.full_name || person.name} {person.email ? `(${person.email})` : ''}
-                                                                </MenuItem>
-                                                            ))
-                                                        )}
-                                                    </TextField>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Dormitory Assignment */}
-                                    <div className="card shadow-sm border-0 mb-3">
-                                        <div className="card-body" style={{ padding: '1.5rem' }}>
-                                            <div className="d-flex align-items-center mb-3">
-                                                <i className="fas fa-building text-primary mr-2" style={{ fontSize: '1.1rem' }}></i>
-                                                <h6 className="mb-0 font-weight-bold" style={{ color: '#323130' }}>Dormitory Assignment</h6>
-                                            </div>
-                                            <div className="row">
-                                                <div className="col-12 col-md-6 mb-3">
-                                                    <TextField
-                                                        select
-                                                        fullWidth
-                                                        label="Building"
-                                                        size="small"
-                                                        value={newAssignment.building_id}
-                                                        onChange={(e) => handleBuildingChange(e.target.value)}
-                                                        error={!!assignmentErrors.building_id}
-                                                        helperText={assignmentErrors.building_id}
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        {buildings.map((building) => (
-                                                            <MenuItem key={building.id} value={building.id}>
-                                                                {building.name}
-                                                            </MenuItem>
-                                                        ))}
-                                                    </TextField>
-                                                </div>
-                                                <div className="col-12 col-md-6 mb-3">
-                                                    <TextField
-                                                        select
-                                                        fullWidth
-                                                        label="Room Number"
-                                                        size="small"
-                                                        value={newAssignment.room_number}
-                                                        onChange={(e) => setNewAssignment({ ...newAssignment, room_number: e.target.value })}
-                                                        error={!!assignmentErrors.room_number}
-                                                        helperText={assignmentErrors.room_number || (!newAssignment.building_id ? 'Select a building first' : '')}
-                                                        disabled={isSubmitting || !newAssignment.building_id || isFetchingRooms}
-                                                    >
-                                                        {isFetchingRooms ? (
-                                                            <MenuItem disabled><CircularProgress size={16} /> Loading rooms...</MenuItem>
-                                                        ) : availableRooms.length > 0 ? (
-                                                            availableRooms.map((room) => (
-                                                                <MenuItem key={room.id} value={room.room_number}>
-                                                                    {room.room_number} {room.capacity ? `(${room.occupied || 0}/${room.capacity})` : ''}
-                                                                </MenuItem>
-                                                            ))
-                                                        ) : (
-                                                            <MenuItem disabled>No rooms available</MenuItem>
-                                                        )}
-                                                    </TextField>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Check-in & Check-out */}
-                                    <div className="card shadow-sm border-0">
-                                        <div className="card-body" style={{ padding: '1.5rem' }}>
-                                            <div className="d-flex align-items-center mb-3">
-                                                <i className="fas fa-calendar-check text-info mr-2" style={{ fontSize: '1.1rem' }}></i>
-                                                <h6 className="mb-0 font-weight-bold" style={{ color: '#323130' }}>Stay Duration</h6>
-                                            </div>
-                                            <div className="row">
-                                                <div className="col-12 col-md-6 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        type="date"
-                                                        label="Check-in Date"
-                                                        size="small"
-                                                        value={newAssignment.check_in}
-                                                        onChange={(e) => setNewAssignment({ ...newAssignment, check_in: e.target.value })}
-                                                        error={!!assignmentErrors.check_in}
-                                                        helperText={assignmentErrors.check_in}
-                                                        disabled={isSubmitting}
-                                                        InputLabelProps={{ shrink: true }}
-                                                    />
-                                                </div>
-                                                <div className="col-12 col-md-6 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        type="date"
-                                                        label="Check-out Date"
-                                                        size="small"
-                                                        value={newAssignment.check_out}
-                                                        onChange={(e) => setNewAssignment({ ...newAssignment, check_out: e.target.value })}
-                                                        error={!!assignmentErrors.check_out}
-                                                        helperText={assignmentErrors.check_out}
-                                                        disabled={isSubmitting}
-                                                        InputLabelProps={{ shrink: true }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="modal-footer border-0" style={{ backgroundColor: '#fafafa', padding: '1rem 2rem' }}>
-                                    <button type="button" className="btn btn-secondary shadow-sm px-4 py-2" onClick={() => !isSubmitting && setShowAssignModal(false)} style={{ fontSize: '13px', fontWeight: '600', borderRadius: '4px' }} disabled={isSubmitting}>
-                                        <i className="fas fa-times mr-2"></i>
-                                        Cancel
-                                    </button>
-                                    <Button type="submit" variant="contained" style={{ backgroundColor: assignmentType === 'trainee' ? '#28a745' : '#0078d4' }} disabled={isSubmitting}>
-                                        {isSubmitting ? <CircularProgress size={18} color="inherit" /> : 'Add Assignment'}
-                                    </Button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Update Assignment Modal */}
-            {showUpdateModal && selectedAssignment && (
-                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }} role="dialog" aria-modal="true" onClick={() => !isSubmitting && setShowUpdateModal(false)}>
-                    <div className="modal-dialog modal-dialog-scrollable modal-lg modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-content border-0 shadow-lg" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-                            <div className="modal-header border-0" style={{ 
-                                background: 'linear-gradient(135deg, #ff9800 0%, #e68900 100%)',
-                                padding: '1.5rem 2rem',
-                                color: 'white'
-                            }}>
-                                <div className="d-flex align-items-center justify-content-between w-100">
-                                    <div className="d-flex align-items-center">
-                                        <div className="bg-white rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" 
-                                            style={{ width: '50px', height: '50px' }}>
-                                            <i className="fas fa-edit text-warning" style={{ fontSize: '1.2rem' }}></i>
-                                        </div>
-                                        <h5 className="mb-0 font-weight-bold" style={{ fontSize: '18px', letterSpacing: '0.3px' }}>
-                                            Update Assignment
-                                        </h5>
-                                    </div>
-                                    <button type="button" className="close text-white" onClick={() => !isSubmitting && setShowUpdateModal(false)} disabled={isSubmitting}>
-                                        <span>&times;</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <form onSubmit={submitUpdate}>
-                                <div className="modal-body" style={{ backgroundColor: '#f8f9fa', padding: '2rem' }}>
-                                    {/* Assignment Info */}
-                                    <div className="alert alert-info d-flex align-items-center mb-3" style={{ fontSize: '13px' }}>
-                                        <i className="fas fa-info-circle mr-2"></i>
-                                        <span>Updating assignment for <strong>{selectedAssignment.person_name}</strong> in <strong>{selectedAssignment.building_name}</strong> - Room <strong>{selectedAssignment.room_number}</strong></span>
-                                    </div>
-
-                                    {/* Check-in & Check-out */}
-                                    <div className="card shadow-sm border-0 mb-3">
-                                        <div className="card-body" style={{ padding: '1.5rem' }}>
-                                            <div className="d-flex align-items-center mb-3">
-                                                <i className="fas fa-calendar-check text-info mr-2" style={{ fontSize: '1.1rem' }}></i>
-                                                <h6 className="mb-0 font-weight-bold" style={{ color: '#323130' }}>Stay Duration</h6>
-                                            </div>
-                                            <div className="row">
-                                                <div className="col-12 col-md-6 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        type="date"
-                                                        label="Check-in Date"
-                                                        size="small"
-                                                        value={updateData.check_in}
-                                                        onChange={(e) => setUpdateData({ ...updateData, check_in: e.target.value })}
-                                                        disabled={isSubmitting}
-                                                        InputLabelProps={{ shrink: true }}
-                                                    />
-                                                </div>
-                                                <div className="col-12 col-md-6 mb-3">
-                                                    <TextField
-                                                        fullWidth
-                                                        type="date"
-                                                        label="Check-out Date"
-                                                        size="small"
-                                                        value={updateData.check_out}
-                                                        onChange={(e) => setUpdateData({ ...updateData, check_out: e.target.value })}
-                                                        disabled={isSubmitting}
-                                                        InputLabelProps={{ shrink: true }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Payment Status */}
-                                    <div className="card shadow-sm border-0">
-                                        <div className="card-body" style={{ padding: '1.5rem' }}>
-                                            <div className="d-flex align-items-center mb-3">
-                                                <i className="fas fa-money-bill-wave text-success mr-2" style={{ fontSize: '1.1rem' }}></i>
-                                                <h6 className="mb-0 font-weight-bold" style={{ color: '#323130' }}>Payment Status</h6>
-                                            </div>
-                                            <div className="row">
-                                                <div className="col-12">
-                                                    <TextField
-                                                        select
-                                                        fullWidth
-                                                        label="Payment Status"
-                                                        size="small"
-                                                        value={updateData.payment_status}
-                                                        onChange={(e) => setUpdateData({ ...updateData, payment_status: e.target.value })}
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        <MenuItem value="unpaid">Unpaid</MenuItem>
-                                                        <MenuItem value="partial">Partial</MenuItem>
-                                                        <MenuItem value="paid">Paid</MenuItem>
-                                                    </TextField>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="modal-footer border-0" style={{ backgroundColor: '#fafafa', padding: '1rem 2rem' }}>
-                                    <button type="button" className="btn btn-secondary shadow-sm px-4 py-2" onClick={() => !isSubmitting && setShowUpdateModal(false)} style={{ fontSize: '13px', fontWeight: '600', borderRadius: '4px' }} disabled={isSubmitting}>
-                                        <i className="fas fa-times mr-2"></i>
-                                        Cancel
-                                    </button>
-                                    <Button type="submit" variant="contained" style={{ backgroundColor: '#ff9800' }} disabled={isSubmitting}>
-                                        {isSubmitting ? <CircularProgress size={18} color="inherit" /> : 'Update Assignment'}
-                                    </Button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <RoomTenantsModal show={showTenantsModal} onClose={() => setShowTenantsModal(false)} room={selectedRoom} tenants={roomTenants} />
+            <OverdueTenantsModal show={showOverdueModal} onClose={() => setShowOverdueModal(false)} room={selectedRoom} overdueTenants={overdueTenants} />
         </>
     );
 };

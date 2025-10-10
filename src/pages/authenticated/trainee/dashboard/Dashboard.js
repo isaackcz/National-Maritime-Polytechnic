@@ -1,251 +1,33 @@
-import { useState, useEffect } from 'react';
 import PageName from '../../../components/PageName';
 import SkeletonLoader from '../../../components/SkeletonLoader/SkeletonLoader';
-import useGetToken from '../../../../hooks/useGetToken';
-import useSystemURLCon from '../../../../hooks/useSystemURLCon';
 import useDateFormat from '../../../../hooks/useDateFormat';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import useDashboardData from './useDashboardData';
+import { registrationRequirements } from './registrationRequirements';
 
 /**
  * Dashboard Component - Main trainee dashboard
  * Displays enrolled courses, pending payments, registration requirements, and statistics
+ * 
+ * This component acts as a pure presentation layer - all logic and API calls
+ * are handled by the useDashboardData custom hook
  */
 const Dashboard = () => {
-    // mga hooks para han page
-    const { url } = useSystemURLCon(); // para API calls
-    const navigate = useNavigate(); // para route
-    const { getToken, removeToken } = useGetToken(); // para token han user
-    const { formatDateToReadable } = useDateFormat(); // para format han date
-
-    // mga state para han dashboard data
-    const [isLoading, setIsLoading] = useState(true); // loading state
-    const [enrolledCourses, setEnrolledCourses] = useState([]); // enrolled courses
-    const [pendingPayments, setPendingPayments] = useState([]); // pending payments
-    const [userStats, setUserStats] = useState({}); // user statistics
-    const [registrationStatus, setRegistrationStatus] = useState(false); // registration completion status
-
-    /**
-     * Fetch dashboard data from Laravel API
-     */
-    const fetchDashboardData = async () => {
-        try {
-            setIsLoading(true);
-
-            // ===== LARAVEL API INTEGRATION - UNCOMMENT WHEN BACKEND IS READY =====
-            // const token = getToken('csrf-token');
-            // const response = await axios.get(`${url}/dashboard/trainee-data`, {
-            //     headers: {
-            //         Authorization: `Bearer ${token}`,
-            //         Accept: 'application/json',
-            //         'Content-Type': 'application/json'
-            //     }
-            // });
-            // 
-            // // Set data from Laravel API response
-            // setEnrolledCourses(response.data.enrolled_courses);
-            // setPendingPayments(response.data.pending_payments);
-            // setUserStats(response.data.user_stats);
-            // setRegistrationStatus(response.data.registration_status);
-            // setIsLoading(false);
-            // ===== END API INTEGRATION SECTION =====
-
-            // ===== TEMPORARY HARDCODED DATA - DELETE WHEN API IS READY =====
-            // This data structure must match exactly what Laravel backend returns
-            // Laravel should return this exact format for seamless integration
-            const hardCodedDashboardData = {
-                enrolled_courses: [
-                    {
-                        enrollment_id: 1,
-                        course: {
-                            id: 69,
-                            acronym: "AFF",
-                            name: "Advanced Fire Fighting",
-                            duration: "5 days",
-                            course_type: "Specialized Courses",
-                            total_fee: 3270
-                        },
-                        enrollment_status: "ongoing",
-                        payment_status: "paid",
-                        enrolled_date: "2024-01-15",
-                        start_date: "2024-02-01",
-                        end_date: "2024-02-05",
-                        progress: 65
-                    },
-                    {
-                        enrollment_id: 2,
-                        course: {
-                            id: 44,
-                            acronym: "BT",
-                            name: "Basic Training with PADAMS, SHAPIMS & GSTS",
-                            duration: "12 days",
-                            course_type: "Basic Courses",
-                            total_fee: 3040
-                        },
-                        enrollment_status: "completed",
-                        payment_status: "paid",
-                        enrolled_date: "2023-11-01",
-                        start_date: "2023-11-15",
-                        end_date: "2023-11-27",
-                        progress: 100
-                    },
-                    {
-                        enrollment_id: 3,
-                        course: {
-                            id: 68,
-                            acronym: "GMDSS",
-                            name: "GMDSS Radio Operators",
-                            duration: "16 days",
-                            course_type: "Specialized Courses",
-                            total_fee: 4970
-                        },
-                        enrollment_status: "approved",
-                        payment_status: "paid",
-                        enrolled_date: "2024-02-20",
-                        start_date: "2024-03-01",
-                        end_date: "2024-03-16",
-                        progress: 0
-                    }
-                ],
-                pending_payments: [
-                    {
-                        enrollment_id: 4,
-                        course: {
-                            id: 74,
-                            acronym: "SSO",
-                            name: "Ship Security Officer",
-                            duration: "4 days",
-                            course_type: "Deck Courses",
-                            total_fee: 1770
-                        },
-                        enrollment_status: "pending",
-                        payment_status: "unpaid",
-                        enrolled_date: "2024-02-25",
-                        start_date: null,
-                        end_date: null,
-                        progress: 0
-                    }
-                ],
-                user_stats: {
-                    total_courses: 4,
-                    completed_courses: 1,
-                    ongoing_courses: 1,
-                    pending_courses: 2,
-                    total_paid: 11280,
-                    total_pending: 1770
-                },
-                registration_status: false
-            };
-            // ===== END HARDCODED DATA SECTION =====
-
-            // Simulate API delay - DELETE THIS setTimeout WHEN USING REAL API
-            setTimeout(() => {
-                setEnrolledCourses(hardCodedDashboardData.enrolled_courses);
-                setPendingPayments(hardCodedDashboardData.pending_payments);
-                setUserStats(hardCodedDashboardData.user_stats);
-                setRegistrationStatus(hardCodedDashboardData.registration_status);
-                setIsLoading(false);
-            }, 800);
-
-        } catch (error) {
-            setIsLoading(false);
-            if (error.response?.status === 500) {
-                // kun 500 error, logout nala it user
-                removeToken('csrf-token');
-                navigate('/access-denied');
-            } else {
-                // ipakita an error message
-                alert(error.response?.data?.message || 'Failed to fetch dashboard data. Please try again.');
-            }
-        }
-    };
-
-    // Kuha it dashboard data pag load han page
-    useEffect(() => {
-        fetchDashboardData();
-    }, []);
-
-    /**
-     * Kuha an color han status badge
-     * Get status badge color
-     * 
-     * @function getStatusColor
-     * @param {string} status - The enrollment status
-     * @returns {string} Bootstrap badge class
-     */
-    const getStatusColor = (status) => {
-        const colors = {
-            'pending': 'badge-warning',
-            'approved': 'badge-info',
-            'ongoing': 'badge-primary',
-            'completed': 'badge-success',
-            'cancelled': 'badge-danger'
-        };
-        return colors[status] || 'badge-secondary';
-    };
-
-    /**
-     * Kuha an color han payment status badge
-     * Get payment status badge color
-     * 
-     * @function getPaymentStatusColor
-     * @param {string} status - The payment status
-     * @returns {string} Bootstrap badge class
-     */
-    const getPaymentStatusColor = (status) => {
-        const colors = {
-            'unpaid': 'badge-danger',
-            'partial': 'badge-warning',
-            'paid': 'badge-success'
-        };
-        return colors[status] || 'badge-secondary';
-    };
-
-    // Registration requirements checklist
-    const registrationRequirements = [
-        {
-            id: 1,
-            title: "Last Disembarkation Page",
-            description: "Upload a clear photo of your last disembarkation page from your seaman's book",
-            icon: "fas fa-ship",
-            required: true
-        },
-        {
-            id: 2,
-            title: "SRN Number Screenshot",
-            description: "Please screenshot your SRN NUMBER from your MARINA MISMO account",
-            icon: "fas fa-id-card",
-            required: true
-        },
-        {
-            id: 3,
-            title: "Marina License or PRC License",
-            description: "For marine officers - upload your valid license",
-            icon: "fas fa-certificate",
-            required: true
-        },
-        {
-            id: 4,
-            title: "Sea Service or Seaman's Book",
-            description: "For experienced seafarers - upload your sea service record",
-            icon: "fas fa-book",
-            required: true
-        },
-        {
-            id: 5,
-            title: "Signature",
-            description: "Upload a photo of your signature on plain white paper",
-            icon: "fas fa-signature",
-            required: true
-        },
-        {
-            id: 6,
-            title: "1.5x1.5 Colored ID Picture",
-            description: "White background, computerized name tag. Uniform for marine graduates, plain white polo for non-marine graduates",
-            icon: "fas fa-user-circle",
-            required: true
-        }
-    ];
+    const { formatDateToReadable } = useDateFormat();
+    
+    // Get all dashboard data and functions from custom hook
+    const {
+        isLoading,
+        enrolledCourses,
+        pendingPayments,
+        userStats,
+        registrationStatus,
+        error,
+        getStatusColor,
+        getPaymentStatusColor,
+        navigateToCourseList,
+        navigateToEnrollment,
+        retryFetch
+    } = useDashboardData();
 
     return (
         <>
@@ -260,6 +42,29 @@ const Dashboard = () => {
             {
                 isLoading
                     ? <SkeletonLoader />
+                    : error
+                    ? <section className="content">
+                        <div className="container-fluid">
+                            <div className="row">
+                                <div className="col-12">
+                                    <div className="card border-0 shadow-sm">
+                                        <div className="card-body text-center py-5">
+                                            <i className="fas fa-exclamation-triangle text-danger" style={{ fontSize: '3rem' }}></i>
+                                            <h5 className="mt-3 mb-2 text-danger">Error Loading Dashboard</h5>
+                                            <p className="text-muted mb-4">{error}</p>
+                                            <button
+                                                onClick={retryFetch}
+                                                className="btn btn-primary"
+                                            >
+                                                <i className="fas fa-redo mr-2"></i>
+                                                Retry
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                     : <section className="content">
                 <div className="container-fluid">
                     <div className="row fade-up">
@@ -628,7 +433,7 @@ const Dashboard = () => {
                                                                 </p>
                                                             </div>
                                                             <button
-                                                                onClick={() => navigate('/trainee/course/list')}
+                                                                onClick={navigateToCourseList}
                                                                 className="btn"
                                                                 style={{ 
                                                                     fontSize: '12px',
@@ -778,7 +583,7 @@ const Dashboard = () => {
                                             
                                             <div className="p-3 border-top" style={{ backgroundColor: '#f8fafc' }}>
                                                 <button
-                                                    onClick={() => navigate('/trainee/course/enroll-new-course')}
+                                                    onClick={navigateToEnrollment}
                                                     className="btn w-100"
                                                     style={{
                                                         fontSize: '14px',
@@ -817,7 +622,7 @@ const Dashboard = () => {
                                                     Recent Enrolled Courses
                                                 </h6>
                                                 <button
-                                                    onClick={() => navigate('/trainee/course/list')}
+                                                    onClick={navigateToCourseList}
                                                     className="btn btn-outline-primary btn-sm"
                                                     style={{ fontSize: '12px', padding: '0.4rem 1rem' }}
                                                 >
@@ -834,7 +639,7 @@ const Dashboard = () => {
                                                         Start by enrolling in your first course
                                                     </p>
                                                     <button
-                                                        onClick={() => navigate('/trainee/course/enroll-new-course')}
+                                                        onClick={navigateToEnrollment}
                                                         className="btn btn-primary btn-sm mt-3"
                                                     >
                                                         <i className="fas fa-plus mr-2"></i>
@@ -898,7 +703,7 @@ const Dashboard = () => {
                                                                             ₱{enrollment.course.total_fee.toLocaleString()}
                                                                         </span>
                                                                         <button
-                                                                            onClick={() => navigate('/trainee/course/list')}
+                                                                            onClick={navigateToCourseList}
                                                                             className="btn btn-outline-primary btn-sm"
                                                                             style={{ fontSize: '10px', padding: '0.25rem 0.5rem' }}
                                                                         >
