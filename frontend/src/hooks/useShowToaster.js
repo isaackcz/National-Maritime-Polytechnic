@@ -10,7 +10,7 @@ const useShowToaster = () => {
     const Toast = () => {
         return (
             <>
-                <Box style={{ width: 500 }}>
+                <Box style={{ width: 500, position: 'fixed', zIndex: 9999 }}>
                     <Snackbar
                         autoHideDuration={2500}
                         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}

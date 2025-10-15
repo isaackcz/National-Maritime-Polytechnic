@@ -4,7 +4,6 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use App\Models\{
-    MainCourse,
     CourseModule,
     TrainingFee
 };
@@ -19,7 +18,6 @@ return new class extends Migration
         Schema::create('trainings', function (Blueprint $table) {
             $table->engine = 'InnoDB';
             $table->id();
-            $table->foreignIdFor(MainCourse::class)->constrained()->onDelete('CASCADE');
             $table->foreignIdFor(CourseModule::class)->constrained()->onDelete('CASCADE');
             $table->foreignIdFor(TrainingFee::class)->constrained()->onDelete('CASCADE');
             $table->foreignIdFor(TrainingFee::class, 'training_assessment_fee_id')->onDelete('CASCADE');

@@ -3,6 +3,10 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use App\Models\{
+    MainCourse,
+    MainSchool
+};
 
 return new class extends Migration
 {
@@ -14,8 +18,8 @@ return new class extends Migration
         Schema::create('educational_attainments', function (Blueprint $table) {
             $table->engine = 'InnoDB';
             $table->id();
-            $table->string('school_course_taken');
-            $table->string('school_address');
+            $table->foreignIdFor(MainCourse::class)->constrained()->onDelete('CASCADE');
+            $table->foreignIdFor(MainSchool::class)->constrained()->onDelete('CASCADE');
             $table->string('school_graduated');
             $table->timestamps();
         });

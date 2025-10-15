@@ -41,6 +41,8 @@ const TraineeMenu = () => {
             setActiveMenu('dormitory');
         } else if(locationPaths.includes('trainee/my-account')) {
             setActiveMenu('my-account');
+        } else if(locationPaths.includes('trainee/practice')) {
+            setActiveMenu('practice');
         } else {}
     }, [locationPaths]);
 
@@ -205,6 +207,12 @@ const TraineeMenu = () => {
                                 <Link to="/trainee/my-account" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('trainee/my-account') ? 'active' : ''}`} onClick={() => setActiveMenu('my-account')}>
                                     <span className="nav-icon material-icons-outlined">manage_accounts</span>
                                     <p>My Account</p>
+                                </Link>
+                            </li>
+                            <li className="nav-item">
+                                <Link to="/trainee/practice" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('trainee/practice') ? 'active' : ''}`} onClick={() => setActiveMenu('practice')}>
+                                    <span className="nav-icon material-icons-outlined">practice</span>
+                                    <p>practice</p>
                                 </Link>
                             </li>
                         </ul>

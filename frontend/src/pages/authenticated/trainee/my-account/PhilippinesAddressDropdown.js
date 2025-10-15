@@ -93,7 +93,6 @@ const PhilippinesAddressDropdown = ({ addressData, setAddressData, showHouseAndP
 
     const fetchRegions = async () => {
         try {
-            // API CALL: GET request to fetch all Philippine regions
             const response = await fetch('https://psgc.gitlab.io/api/regions/');
             const data = await response.json();
             setRegions(data);
@@ -183,19 +182,14 @@ const PhilippinesAddressDropdown = ({ addressData, setAddressData, showHouseAndP
     const handleRegionChange = (e) => {
         const value = e.target.value;
         const regionData = regions.find(r => r.code === value);
-        
-        // Update local codes
         setSelectedRegionCode(value);
         setSelectedProvinceCode('');
         setSelectedMunicipalityCode('');
         setSelectedBarangayCode('');
-        
-        // Clear dependent dropdowns
         setProvinces([]);
         setMunicipalities([]);
         setBarangays([]);
 
-        // Update parent component state
         const nextAddress = {
             ...addressData,
             region: regionData ? regionData.name : '',
@@ -217,16 +211,13 @@ const PhilippinesAddressDropdown = ({ addressData, setAddressData, showHouseAndP
         const value = e.target.value;
         const provinceData = provinces.find(p => p.code === value);
         
-        // Update local codes
         setSelectedProvinceCode(value);
         setSelectedMunicipalityCode('');
         setSelectedBarangayCode('');
         
-        // Clear dependent dropdowns
         setMunicipalities([]);
         setBarangays([]);
 
-        // Update parent component state
         const nextAddress = {
             ...addressData,
             province: provinceData ? provinceData.name : '',
@@ -236,8 +227,6 @@ const PhilippinesAddressDropdown = ({ addressData, setAddressData, showHouseAndP
         setAddressData(nextAddress);
 
         clearErrorIfValid(getErrorKey('province'), nextAddress.province, fieldPrefix === 'birthplace' ? { birthplaceAddress: nextAddress } : { addressData: nextAddress });
-
-        // Fetch municipalities for selected province
         if (value) {
             fetchMunicipalities(value);
         }
@@ -247,15 +236,9 @@ const PhilippinesAddressDropdown = ({ addressData, setAddressData, showHouseAndP
     const handleMunicipalityChange = (e) => {
         const value = e.target.value;
         const municipalityData = municipalities.find(m => m.code === value);
-        
-        // Update local codes
         setSelectedMunicipalityCode(value);
         setSelectedBarangayCode('');
-        
-        // Clear dependent dropdowns
         setBarangays([]);
-
-        // Update parent component state
         const nextAddress = {
             ...addressData,
             municipality: municipalityData ? municipalityData.name : '',
@@ -265,7 +248,6 @@ const PhilippinesAddressDropdown = ({ addressData, setAddressData, showHouseAndP
 
         clearErrorIfValid(getErrorKey('municipality'), nextAddress.municipality, fieldPrefix === 'birthplace' ? { birthplaceAddress: nextAddress } : { addressData: nextAddress });
 
-        // Fetch barangays for selected municipality
         if (value) {
             fetchBarangays(value);
         }
@@ -276,10 +258,8 @@ const PhilippinesAddressDropdown = ({ addressData, setAddressData, showHouseAndP
         const value = e.target.value;
         const barangayData = barangays.find(b => b.code === value);
         
-        // Update local code
         setSelectedBarangayCode(value);
 
-        // Update parent component state
         const nextAddress = {
             ...addressData,
             barangay: barangayData ? barangayData.name : ''
@@ -289,14 +269,12 @@ const PhilippinesAddressDropdown = ({ addressData, setAddressData, showHouseAndP
         clearErrorIfValid(getErrorKey('barangay'), nextAddress.barangay, fieldPrefix === 'birthplace' ? { birthplaceAddress: nextAddress } : { addressData: nextAddress });
     };
 
-    // Helper function to get error key based on prefix
     const getErrorKey = (fieldName) => {
         return fieldPrefix ? `${fieldPrefix}${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}` : fieldName;
     };
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* ROW 1: House No/Street (Full width) - Only for Current Address */}
             {showHouseAndPostal && (
                 <TextField 
                     label="House No. / Street" 

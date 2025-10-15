@@ -1,0 +1,1 @@
+Book Reservation Status: <strong>{{ $details['status'] }}</strong>

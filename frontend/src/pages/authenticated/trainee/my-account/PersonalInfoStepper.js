@@ -34,79 +34,95 @@ const InfoCard = ({ children, elevation = 0 }) => (
 
 const PersonalInfoStepper = ({ logic, onSubmit }) => {
     const [activeStep, setActiveStep] = useState(0);
-    const [errors, setErrors] = useState({}); 
-    const [touched, setTouched] = useState({});
+    const [errors, setErrors] = useState({}); // Track validation errors
+    const [touched, setTouched] = useState({}); // Track which fields user has interacted with
     
-
+    /**
+     * Handle form submission
+     * Only allows submission when on the final step (step 5 - Documents)
+     * Prevents accidental form submission during step navigation
+     */
     const handleFormSubmit = (e) => {
-        e.preventDefault();
-        
+        e.preventDefault(); // Always prevent default form behavior
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        // SAFEGUARD: Only allow submission on final step
         if (activeStep !== steps.length - 1) {
             console.log(`⚠️ Blocked form submission - Currently on step ${activeStep + 1}, not on final step`);
-            return;
+            return; // Don't submit if not on final step
         }
         
+        // Validate current step
         const stepErrors = validateStep(activeStep, logic);
         
+        // If there are errors, show them and prevent navigation
         if (Object.keys(stepErrors).length > 0) {
             setErrors(stepErrors);
-            console.log("❌ Form has validation errors - submission blocked");
             return;
         }
-        
+        // Clear errors and proceed to next step
+        setErrors({});
+        setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
+        // All checks passed - proceed with actual submission
         console.log("✅ Form validation passed - proceeding with submission");
         logic.SubmitFormPersonal(e);
     };
 
-
+    /**
+     * Handle Next button with validation
+     * Validates current step before allowing navigation
+     * Shows MUI validation errors (red borders + helper text) without alert popup
+     */
     const handleNext = () => {
         // Validate current step
         const stepErrors = validateStep(activeStep, logic);
         
-        
+        // If there are errors, show them and prevent navigation
         if (Object.keys(stepErrors).length > 0) {
             setErrors(stepErrors);
+            console.log("qwerty: ", stepErrors);
+            // No alert - user sees red borders and error messages on fields
             return;
         }
         
+        // Clear errors and proceed to next step
         setErrors({});
         setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
     };
 
-
+    /**
+     * Handle Back button
+     * Clears errors when going back
+     */
     const handleBack = () => {
         setErrors({});
         setActiveStep((prev) => Math.max(prev - 1, 0));
     };
 
-
+    /**
+     * Mark field as touched when user interacts with it
+     */
     const handleFieldTouch = (fieldName) => {
         setTouched(prev => ({ ...prev, [fieldName]: true }));
     };
 
-
-    const clearErrorIfValid = (fieldName, value, logicOverrides) => {
+    const clearErrorIfValid = (fieldName) => {
+    // Use setTimeout to allow the logic state to update first
+    setTimeout(() => {
+        // Validate current step after state update
+        const stepErrors = validateStep(activeStep, logic);
         
-        if (!errors[fieldName]) return;
-
-        
-        let logicDraft = { ...logic };
-        if (value !== undefined) {
-            logicDraft = { ...logicDraft, [fieldName]: value };
+        // If this field is now valid, remove its error
+        if (!stepErrors[fieldName] && errors[fieldName]) {
+        setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[fieldName];
+            return newErrors;
+        });
         }
-        if (logicOverrides && typeof logicOverrides === 'object') {
-            logicDraft = { ...logicDraft, ...logicOverrides };
-        }
-        
-        const stepErrors = validateStep(activeStep, logicDraft);
-        
-        if (!stepErrors[fieldName]) {
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors[fieldName];
-                return newErrors;
-            });
-        }
+    }, 100); // Short delay to ensure state is updated
     };
 
     const renderStepContent = (step) => {
@@ -222,7 +238,11 @@ const PersonalInfoStepper = ({ logic, onSubmit }) => {
                     <Button 
                         type="button"
                         variant="contained" 
-                        onClick={handleNext}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleNext();
+                        }}
                         size="medium"
                         endIcon={<i className="fas fa-arrow-right" style={{ fontSize: '12px' }}></i>}
                         sx={{ 
@@ -252,10 +272,12 @@ const PersonalInfoStepper = ({ logic, onSubmit }) => {
 
 // Step 1: Basic Information
 const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
+    
     <Box>
         <SectionHeader icon="fas fa-user-circle" title="Personal Information" subtitle="Provide your basic personal details" />
         
         <InfoCard>
+            {/* Name Fields - Auto-fit with minimum 150px */}
             <Box sx={{ 
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
@@ -306,6 +328,7 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                 />
             </Box>
 
+            {/* Email and SRN - 2 columns */}
             <Box sx={{ 
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -330,6 +353,7 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     label="SRN Number" 
                     value={logic.srn} 
                     onChange={(e) => {
+                        // Only allow numbers - backend expects integer
                         const value = e.target.value.replace(/[^0-9]/g, '');
                         logic.setsrn(value);
                         clearErrorIfValid('srn', value);
@@ -342,7 +366,7 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     {...textFieldProps}
                     inputProps={{ 
                         inputMode: 'numeric',
-                        pattern: '[0-9]*'
+                        pattern: '[0-10]*'
                     }}
                     InputProps={{
                         startAdornment: <i className="fas fa-id-badge mr-2 text-muted" style={{ fontSize: '12px' }}></i>
@@ -354,6 +378,7 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
         <SectionHeader icon="fas fa-id-card" title="Demographics" subtitle="Date of birth and identification details" />
         
         <InfoCard>
+            {/* User Type, Sex, birthdate - 3 columns auto-fit */}
             <Box sx={{ 
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -403,15 +428,15 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     <MenuItem value="FEMALE" {...menuItemProps}>Female</MenuItem>
                 </TextField>
                 <TextField 
-                    label="Birthday" 
-                    value={logic.birthday} 
+                    label="birthdate" 
+                    value={logic.birthdate} 
                     onChange={(e) => {
-                        logic.setBirthday(e.target.value);
-                        clearErrorIfValid('birthday', e.target.value);
+                        logic.setBirthdate(e.target.value);
+                        clearErrorIfValid('birthdate', e.target.value);
                     }} 
-                    onBlur={() => onFieldTouch('birthday')}
-                    error={!!errors.birthday}
-                    helperText={errors.birthday}
+                    onBlur={() => onFieldTouch('birthdate')}
+                    error={!!errors.birthdate}
+                    helperText={errors.birthdate}
                     required
                     fullWidth 
                     {...dateFieldProps}
@@ -421,6 +446,7 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                 />
             </Box>
             
+            {/* Civil Status and Nationality - 2 columns */}
             <Box sx={{ 
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -501,6 +527,7 @@ const ContactInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => 
         <SectionHeader icon="fas fa-phone-alt" title="Contact Numbers" subtitle="How can we reach you?" />
         
         <InfoCard>
+            {/* Mobile Numbers - 2 columns */}
             <Box sx={{ 
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -606,11 +633,10 @@ const ContactInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => 
                 setAddressData={logic.setAddressData}
                 errors={errors}
                 onFieldTouch={onFieldTouch} 
-                clearErrorIfValid={clearErrorIfValid}
             />
         </InfoCard>
 
-        <SectionHeader icon="fas fa-birthday-cake" title="Birthplace" subtitle="Where were you born?" />
+        <SectionHeader icon="fas fa-birthdate-cake" title="Birthplace" subtitle="Where were you born?" />
         
         <InfoCard>
             {(errors.birthplaceRegion || errors.birthplaceProvince || errors.birthplaceMunicipality || errors.birthplaceBarangay) && (
@@ -628,7 +654,6 @@ const ContactInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => 
                 errors={errors}
                 onFieldTouch={onFieldTouch}
                 fieldPrefix="birthplace"
-                clearErrorIfValid={clearErrorIfValid}
             />
         </InfoCard>
     </Box>
@@ -865,6 +890,7 @@ const ShipboardStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                 <SectionHeader icon="fas fa-certificate" title="Latest Shipboard Details" subtitle="Provide information about your most recent maritime experience" />
                 
                 <InfoCard>
+                    {/* License, Rank, Disembarkation - flexible 2-3 columns */}
                     <Box sx={{ 
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -920,6 +946,7 @@ const ShipboardStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                         />
                     </Box>
 
+                    {/* Shipping Principal and Manning Company - 2 columns */}
                     <Box sx={{ 
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -958,6 +985,7 @@ const ShipboardStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                         />
                     </Box>
 
+                    {/* Optional Fields - 2 columns */}
                     <Box sx={{ 
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -975,8 +1003,9 @@ const ShipboardStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                             label="Mobile Number (Optional)" 
                             value={logic.LSEMobileNumber} 
                             onChange={(value, info) => {
+                                // Limit to 11 digits for PH numbers
                                 const digits = value.replace(/\D/g, '');
-                                if (digits.length <= 12) {
+                                if (digits.length <= 12) { // +63 (2 digits) + 11 digits = 13 - 1 = 12
                                     logic.setLSEMobileNumber(value);
                                 }
                             }}
@@ -1017,12 +1046,13 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     onChange={(e) => {
                         logic.CheckUploadedAvatar(e, 'signature');
                         onFieldTouch('signatureFile');
-                        const file = e.target ? e.target.files?.[0] : e.files?.[0];
-                        clearErrorIfValid('signatureFile', file, { signatureFile: file });
+                        clearErrorIfValid('signatureFile');
                     }} 
                     accept="image/*"
                     fileName={logic.signatureFileName}
                     error={errors.signatureFile}
+                    filePreviewUrl={logic.signatureFileUrl}
+                    required
                 />
                 <DragDropFileInput 
                     label="1.5x1.5 ID Picture *" 
@@ -1035,6 +1065,7 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     accept="image/*"
                     fileName={logic.IDPictureFileName}
                     error={errors.IDPicture}
+                    filePreviewUrl={logic.IDPictureFileUrl}
                 />
                 <DragDropFileInput 
                     label="SRN Screenshot *" 
@@ -1047,6 +1078,7 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     accept="image/*"
                     fileName={logic.SRNFileName}
                     error={errors.SRNFile}
+                    filePreviewUrl={logic.SRNFileUrl}
                 />
                 <DragDropFileInput 
                     label="Sea Service Book *" 
@@ -1058,6 +1090,7 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     }}
                     fileName={logic.seamansBookFileName}
                     error={errors.seamansBook}
+                    filePreviewUrl={logic.seamansBookFileUrl}
                 />
             </Box>
         </InfoCard>
@@ -1071,18 +1104,19 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                 gap: 2
             }}>
                 <DragDropFileInput 
-                    label="Last Disembarkation *" 
+                    label={`Last Disembarkation ${logic.shipboardExperience === 'With Shipboard Experience' ? '*' : '(Optional)'}`} 
                     onChange={(e) => {
-                        logic.CheckUploadedAvatar(e, 'lastEmbarkment');
+                        logic.CheckUploadedAvatar(e, 'lastDisembarkation');
                         onFieldTouch('lastDisembarkation');
                         const file = e.target ? e.target.files?.[0] : e.files?.[0];
-                        clearErrorIfValid('lastDisembarkation', file, { LastDisembarkation: file });
+                        clearErrorIfValid('lastDisembarkation', file, { lastDisembarkation: file });
                     }}
                     fileName={logic.lastDisembarkationFileName}
                     error={errors.lastDisembarkation}
+                    filePreviewUrl={logic.lastDisembarkationFileUrl}
                 />
                 <DragDropFileInput 
-                    label="Marina License *" 
+                    label={`Marina License ${logic.shipboardExperience === 'With Shipboard Experience' ? '*' : '(Optional)'}`} 
                     onChange={(e) => {
                         logic.CheckUploadedAvatar(e, 'marinaLicense');
                         onFieldTouch('licenseFile');
@@ -1091,6 +1125,7 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     }}
                     fileName={logic.licenseFileName}
                     error={errors.licenseFile}
+                    filePreviewUrl={logic.licenseFileUrl}
                 />
             </Box>
         </InfoCard>

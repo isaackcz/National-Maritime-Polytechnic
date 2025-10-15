@@ -1,18 +1,29 @@
-.guest-bg {
+.guest-bg, 
+.guest-bg-large {
     background: url('/public/system-images/bg-image.png') no-repeat;
     background-size: cover;
     background-attachment: fixed;
 }
 
-.guest-bg {
+.guest-bg, 
+.guest-bg-large {
     height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-@media (max-width: '768px') {
-    .guest-bg {
+.right-img-login {
+    display: block !important;
+}
+
+@media (max-width: 768px) {
+    .right-img-login {
+        display: none !important;
+    }
+
+    .guest-bg-large {
+        padding: 20px;
         height: 100%;
     }
 }

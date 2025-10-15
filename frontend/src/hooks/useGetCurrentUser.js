@@ -13,7 +13,6 @@ const useGetCurrentUser = () => {
     const GetCurrentUser = useCallback(async () => {
         try {
             const token = getToken('csrf-token');
-            
             const response = await axios.get(`${url}/user`, {
                 headers: { Authorization: `Bearer ${token}` }
             });

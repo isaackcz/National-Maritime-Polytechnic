@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom';
+import useGetToken from '../hooks/useGetToken';
+import { useEffect } from 'react';
 
 const AccessDenied = () => {
+    const { removeToken } = useGetToken();
+
+    useEffect(() => {
+        removeToken('csrf-token');
+    }, []);
+
     return (
         <>
             <p className='text-center mt-5'>

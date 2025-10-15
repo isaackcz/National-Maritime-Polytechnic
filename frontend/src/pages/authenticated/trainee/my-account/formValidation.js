@@ -41,7 +41,7 @@ export const validateStep1 = (logic) => {
         errors.email = 'Please enter a valid email address';
     }
     
-    if (!logic.srn || logic.srn.trim() === '') {
+    if (!logic.srn) {
         errors.srn = 'SRN Number is required';
     } else if (!/^\d+$/.test(logic.srn)) {
         errors.srn = 'SRN Number must contain only numbers';
@@ -59,8 +59,8 @@ export const validateStep1 = (logic) => {
         errors.civilStatus = 'Civil Status is required';
     }
     
-    if (!logic.birthday || logic.birthday.trim() === '') {
-        errors.birthday = 'Birthday is required';
+    if (!logic.birthdate || logic.birthdate.trim() === '') {
+        errors.birthdate = 'birthdate is required';
     }
     
     if (!logic.nationality) {
@@ -237,28 +237,42 @@ export const validateStep5 = (logic) => {
 export const validateStep6 = (logic) => {
     const errors = {};
     
-    if (!logic.signatureFile) {
+    // Check if files exist (either new uploads OR existing file names)
+    // For new users: check actual file objects
+    // For existing users: check if file names exist (indicating files were previously uploaded)
+    
+    // Only validate required files - signature, ID picture, SRN, and sea service book
+    if (!logic.signatureFile && !logic.signatureFileName) {
         errors.signatureFile = 'E-Signature file is required';
+        console.log("signature validation - file:", logic.signatureFile, "filename:", logic.signatureFileName);
     }
     
-    if (!logic.IDPicture) {
+    if (!logic.IDPicture && !logic.IDPictureFileName) {
         errors.IDPicture = 'ID Picture is required';
+        console.log("ID Picture validation - file:", logic.IDPicture, "filename:", logic.IDPictureFileName);
     }
     
-    if (!logic.SRNFile) {
+    if (!logic.SRNFile && !logic.SRNFileName) {
         errors.SRNFile = 'SRN Screenshot is required';
+        console.log("SRN validation - file:", logic.SRNFile, "filename:", logic.SRNFileName);
     }
     
-    if (!logic.seamansBook) {
+    if (!logic.seamansBook && !logic.seamansBookFileName) {
         errors.seamansBook = 'Sea Service Book is required';
+        console.log("Seamans Book validation - file:", logic.seamansBook, "filename:", logic.seamansBookFileName);
     }
     
-    if (!logic.LastDisembarkation) {
-        errors.lastDisembarkation = 'Last Disembarkation is required';
-    }
-    
-    if (!logic.licenseFile) {
-        errors.licenseFile = 'Marina License is required';
+    // Optional files - only validate if user has shipboard experience
+    if (logic.shipboardExperience === 'With Shipboard Experience') {
+        if (!logic.LastDisembarkation && !logic.lastDisembarkationFileName) {
+            errors.lastDisembarkation = 'Last Disembarkation is required for shipboard experience';
+            console.log("Last Disembarkation validation - file:", logic.LastDisembarkation, "filename:", logic.lastDisembarkationFileName);
+        }
+        
+        if (!logic.licenseFile && !logic.licenseFileName) {
+            errors.licenseFile = 'Marina License is required for shipboard experience';
+            console.log("License validation - file:", logic.licenseFile, "filename:", logic.licenseFileName);
+        }
     }
     
     return errors;
@@ -310,5 +324,3 @@ export const isStepValid = (stepIndex, logic) => {
 /**
  * @param {object} errors 
  */
-
-

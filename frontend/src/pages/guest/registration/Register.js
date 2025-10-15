@@ -19,6 +19,9 @@ import useSystemURLCon from '../../../hooks/useSystemURLCon';
 import useShowToaster from '../../../hooks/useShowToaster';
 import axios from 'axios';
 import { Checkbox, FormControlLabel, FormGroup } from '@mui/material';
+import ReCAPTCHA from 'react-google-recaptcha';
+import FacebookBtn from '../../components/SocialLoginButtons/FacebookBtn';
+import GoogleBtn from '../../components/SocialLoginButtons/GoogleBtn';
 
 const Register = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,6 +39,7 @@ const Register = () => {
     const [confirm_password, setConfirmPassword] = useState("");
     const [isPasswordRuleValid, setIsPasswordRuleValid] = useState(false);
     const { EndAdornment, visible, inputType } = useToggleShowHidePass();
+    const [googleCaptcha, setGoogleCaptcha] = useState(null);
 
     const RegisterUser = async (e) => {
         e.preventDefault();
@@ -56,6 +60,8 @@ const Register = () => {
             formData.append('birthdate', birthday.format('YYYY-MM-DD'));
             formData.append('password', password);
             formData.append('password_confirmation', confirm_password);
+            formData.append('google_captcha', googleCaptcha);
+            formData.append('is_from_social_login', false);
 
             const response = await axios.post(`${url}/register`, formData, {
                 onUploadProgress: (progressEvent) => {
@@ -66,18 +72,20 @@ const Register = () => {
                 }
             });
 
-            setOpenToast(true);
-            setToastStatus('success');
-            setToastMessage(response.data.message);
-            
-            setFname("");
-            setMname("");
-            setLname("");
-            setBirthday(null);
-            setSuffix("");
-            setEmail("");
-            setPassword("");
-            setConfirmPassword("");
+            if(response.status === 201) {
+                setOpenToast(true);
+                setToastStatus('success');
+                setToastMessage(response.data.message);
+                
+                setFname("");
+                setMname("");
+                setLname("");
+                setBirthday(null);
+                setSuffix("");
+                setEmail("");
+                setPassword("");
+                setConfirmPassword("");
+            }
         } catch(error) {
             setOpenToast(true);
             setToastStatus('error');
@@ -85,16 +93,15 @@ const Register = () => {
         } finally {
             setIsSubmitting(false);
             setShowLoader(false);
-
         }
     }
 
     return (
         <>
-            { isSubmitting && <SubmitLoadingAnim cls="loader" /> }
+            { isSubmitting && <SubmitLoadingAnim cls="loader2" /> }
             <Toast />
 
-            <div className='guest-bg'>
+            <div className='guest-bg-large'>
                 <div className="container">
                     <div className='row d-flex align-items-center justify-content-center'>
                         <div className='col-xl-12'>
@@ -121,7 +128,7 @@ const Register = () => {
                                                 </FormControl>
 
                                                 <FormControl className='form-control form-control-sm' style={{ marginBottom: '35px' }} variant="outlined">
-                                                    <InputLabel htmlFor="mname">Middle name <span className='text-danger'>*</span></InputLabel>
+                                                    <InputLabel htmlFor="mname">Middle name</InputLabel>
                                                     <OutlinedInput
                                                         value={mname}
                                                         onChange={(e) => setMname(e.target.value)}
@@ -134,6 +141,7 @@ const Register = () => {
                                                 <FormControl className='form-control form-control-sm' style={{ marginBottom: '35px' }} variant="outlined">
                                                     <InputLabel htmlFor="lname">Last name <span className='text-danger'>*</span></InputLabel>
                                                     <OutlinedInput
+                                                        required
                                                         value={lname}
                                                         onChange={(e) => setLname(e.target.value)}
                                                         id="lname"
@@ -225,11 +233,13 @@ const Register = () => {
                                             </div>
                                         </div>
                         
-                                        <div className='alert alert-default border mt-2'>
-                                            RECAPTCHA CONTAINER
-                                        </div>
+                                        <ReCAPTCHA
+                                            className='mt-2'
+                                            sitekey="6Lc5EOgrAAAAANxyOJtDCIGKE0lA-AZQkWS2KwmV"
+                                            onChange={(e) => { setGoogleCaptcha(e); }}
+                                        />
 
-                                        <FormGroup fullWidth>
+                                        <FormGroup fullWidth className='mt-2'>
                                             <FormControlLabel required control={<Checkbox />} label={<span>I agree to the <Link to="https://reserve.nmp.gov.ph/termsofservice" target='_blank'>terms of service</Link> and <Link to="http://reserve.nmp.gov.ph/privacypolicy" target='_blank'>privacy policy</Link>.</span>} />
                                         </FormGroup>
 
@@ -249,7 +259,8 @@ const Register = () => {
                                                     !email ||
                                                     !password ||
                                                     !confirm_password || 
-                                                    !isPasswordRuleValid
+                                                    !isPasswordRuleValid ||
+                                                    !googleCaptcha
                                                 } className="text--fontPos13--xW8hS btn btn-primary btn-block elevation-1">
                                                     { isSubmitting ? 'PLEASE WAIT..' : 'SUBMIT' }
                                                 </button>
@@ -261,16 +272,12 @@ const Register = () => {
                                         </div>
 
                                         <div className="row mt-2">
-                                            <div className="col-xl-6 mb-2">
-                                                <button className="text--fontPos13--xW8hS btn btn-default btn-block">
-                                                    <i className='fab fa-google text-danger mr-2'></i> Sign up with Google
-                                                </button>
+                                            <div className="col-xl-6 mb-1">
+                                                <GoogleBtn />
                                             </div>
 
-                                            <div className="col-xl-6 mb-2">
-                                                <button className="text--fontPos13--xW8hS btn btn-default btn-block">
-                                                    <i className='fab fa-facebook text-primary mr-2'></i> Sign up with Facebook
-                                                </button>
+                                            <div className="col-xl-6 mb-1">
+                                                <FacebookBtn textShown="Login with" />
                                             </div>
                                         </div>
                                     </form>

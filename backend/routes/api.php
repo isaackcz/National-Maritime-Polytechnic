@@ -10,28 +10,21 @@ use App\Http\Controllers\Guest\{
     ForgotPasswordController, 
     EmailVerificationController
 };
-
-/** admin controllers */
-use App\Http\Controllers\Authenticated\DormitoryAdmin\{
-    DormitoryController,
-    DormitoryMyAccountCtrl
-};
-use App\Http\Controllers\Authenticated\EnrollmentAdmin\{
-    TrainingCtrl
-};
-
 /** trainee controllers */
 use App\Http\Controllers\Authenticated\Trainee\{
     MyAccount,
     TraineeDormitory,
     TraineeCourses
 };
-
-/** general controllers */
-use App\Http\Controllers\Authenticated\General\{
-    Account
+/** administrator controllers */
+use App\Http\Controllers\Authenticated\Administrator\{
+    Account,
+    EnrollmentCtrl,
+    TrainingCtrl,
+    LibraryController,
+    DormitoryController,
+    Masterlist
 };
-
 /** other controllers */
 use App\Http\Controllers\Authenticated\Logout;
 
@@ -56,6 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('get_trainee_general_info', [MyAccount::class, 'get_trainee_general_info']);
             Route::post('update_password', [Account::class, 'update_password']);
             Route::get('get_activities', [Account::class, 'get_activities']);
+            Route::get('get_all_courses_and_schools;', [MyAccount::class, 'get_all_courses_and_schools']);
         });
 
         Route::prefix('/courses/')->group(function() {
@@ -67,61 +61,91 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('get_all_dormitories', [TraineeDormitory::class, 'get_all_dormitories']);
             Route::get('get_personal_dormitory', [TraineeDormitory::class, 'get_personal_dormitory']);
             Route::post('request_tenant_room', [TraineeDormitory::class,'request_tenant_room']);
+            Route::post('update_status_dormitory', [TraineeDormitory::class,'update_status_dormitory']);
         });
        
     });
 
-    /** admin routes */
-    /** enrollment */
-    Route::middleware('admin-enrollment')->prefix('/enrollment-admin/')->group(function() {
-        Route::prefix('/trainings/')->group(function() {
-            Route::get('get', [TrainingCtrl::class, 'trainings']);
-            Route::post('remove_training', [TrainingCtrl::class, 'remove_training']);
-            Route::get('components/get_cmtfc', [TrainingCtrl::class, 'get_cmtfc']);
-            Route::post('components/create_or_update_training', [TrainingCtrl::class, 'create_or_update_training']);
+    /** administrator routes */
+    Route::prefix('/admin/')->group(function() {
+        /** enrollment controllers */
+        Route::middleware('user_role:SUPERADMIN,ADMIN-ENROLLMENT')->group(function() {
+            Route::prefix('/enrollment/')->group(function() {
+                Route::get('get_pendings', [EnrollmentCtrl::class, 'get_pendings']);
+                Route::get('get_enrolled', [EnrollmentCtrl::class, 'get_enrolled']);
+                Route::get('get_finished', [EnrollmentCtrl::class, 'get_finished']);
+            });
 
-            Route::post('components/create_or_update_module', [TrainingCtrl::class, 'create_or_update_module']);
-            Route::get('components/get_modules', [TrainingCtrl::class, 'get_modules']);
-            Route::post('components/remove_module', [TrainingCtrl::class, 'remove_module']);
-
-            Route::post('components/create_or_update_course', [TrainingCtrl::class, 'create_or_update_course']);
-            Route::get('components/get_courses', [TrainingCtrl::class, 'get_courses']);
-            Route::post('components/remove_course', [TrainingCtrl::class, 'remove_course']);
-
-            Route::post('components/create_or_update_training_fee', [TrainingCtrl::class, 'create_or_update_training_fee']);
-            Route::get('components/get_training_fees', [TrainingCtrl::class, 'get_training_fees']);
-            Route::post('components/remove_fee', [TrainingCtrl::class, 'remove_training_fee']);
-
-            Route::post('components/create_or_update_certificate', [TrainingCtrl::class, 'create_or_update_certificate']);
-            Route::get('components/get_certificates', [TrainingCtrl::class, 'get_certificates']);
-            Route::post('components/remove_certificate', [TrainingCtrl::class, 'remove_certificate']);
-            
-            Route::post('create_or_update_course', [TrainingCtrl::class, 'create_or_update_course']);
+            Route::prefix('/trainings/')->group(function() {
+                Route::get('get', [TrainingCtrl::class, 'trainings']);
+                Route::get('remove_training/{training_id}', [TrainingCtrl::class, 'remove_training']);
+                Route::get('components/get_cmtfc', [TrainingCtrl::class, 'get_cmtfc']);
+                Route::post('components/create_or_update_training', [TrainingCtrl::class, 'create_or_update_training']);
+                Route::post('components/create_or_update_module', [TrainingCtrl::class, 'create_or_update_module']);
+                Route::get('components/get_modules', [TrainingCtrl::class, 'get_modules']);
+                Route::get('components/remove_module/{module_id}', [TrainingCtrl::class, 'remove_module']);
+                Route::post('components/create_or_update_training_fee', [TrainingCtrl::class, 'create_or_update_training_fee']);
+                Route::get('components/get_training_fees', [TrainingCtrl::class, 'get_training_fees']);
+                Route::get('components/remove_fee/{fee_id}', [TrainingCtrl::class, 'remove_training_fee']);
+                Route::post('components/create_or_update_certificate', [TrainingCtrl::class, 'create_or_update_certificate']);
+                Route::get('components/get_certificates', [TrainingCtrl::class, 'get_certificates']);
+                Route::get('components/remove_certificate/{certificate_id}', [TrainingCtrl::class, 'remove_certificate']);
+                Route::post('create_or_update_course', [TrainingCtrl::class, 'create_or_update_course']);
+            });
         });
 
+        /** library controllers */
+        Route::middleware('user_role:SUPERADMIN,ADMIN-LIBRARY')->group(function() {
+            Route::prefix('/books/')->group(function() {
+                Route::get('get_books', [LibraryController::class, 'get_books']);
+                Route::get('get_book_reservation', [LibraryController::class, 'get_book_reservation']);
+                Route::post('update_reservation', [LibraryController::class, 'update_reservation']);
+                Route::post('create_or_update_book', [LibraryController::class, 'create_or_update_book']);
+                Route::get('remove/{book_id}', [LibraryController::class, 'remove_book']);
+            });
+
+            Route::prefix('/category/')->group(function() {
+                Route::get('get_categories', [LibraryController::class, 'get_categories']);
+                Route::get('get_active_categories', [LibraryController::class, 'get_active_categories']);
+                Route::post('create_or_update_category', [LibraryController::class, 'create_or_update_category']);
+                Route::get('remove/{category_id}', [LibraryController::class, 'remove_category']);
+            });
+        });
+
+        /** dormitory controllers */
+        Route::middleware('user_role:SUPERADMIN,ADMIN-DORMITORY')->group(function() {
+            Route::prefix('/dormitory/')->group(function() {
+                Route::get('get', [DormitoryController::class, 'dormitories']);
+                Route::get('get_all_invoices', [DormitoryController::class, 'get_all_invoices']);
+                Route::get('get/tenants/{dormitory_id}', [DormitoryController::class, 'get_tenants']);
+                Route::get('get/tenants/invoice/{tenant_id}', [DormitoryController::class, 'get_tenants_invoices']);
+                Route::post('create_or_update_dormitory', [DormitoryController::class, 'create_or_update_dormitory']);
+                Route::get('remove/{dormitory_id}', [DormitoryController::class, 'remove_dormitory']);
+                Route::post('update_status_dormitory', [DormitoryController::class, 'update_status_dormitory']);
+            });
+        });
+
+        Route::middleware('user_role:SUPERADMIN')->prefix('/masterlist/')->group(function() {
+            Route::prefix('/school/')->group(function() {
+                Route::post('create_or_update_school', [Masterlist::class, 'create_or_update_school']);
+                Route::get('get_schools', [Masterlist::class, 'get_schools']);
+                Route::get('remove/{course_id}', [Masterlist::class, 'remove_school']);
+            });
+
+            Route::prefix('/course/')->group(function() {
+                Route::post('create_or_update_course', [Masterlist::class, 'create_or_update_course']);
+                Route::get('get_courses', [Masterlist::class, 'get_courses']);
+                Route::get('remove/{course_id}', [Masterlist::class, 'remove_course']);
+            });
+        });
+
+        /** general controllers */
         Route::prefix('/my-account/')->group(function() {
             Route::post('update_personal', [Account::class, 'update_personal']);
             Route::post('update_password', [Account::class, 'update_password']);
             Route::get('get_activities', [Account::class, 'get_activities']);
         });
     });
-    /** dormitory */
-    Route::middleware('admin-dormitory')->prefix('/dormitory-admin/')->group(function() {
-        Route::prefix('/dormitory/')->group(function() {
-            Route::get('get', [DormitoryController::class, 'dormitories']);
-            Route::get('get/tenants/{dormitory_id}', [DormitoryController::class, 'get_tenants']);
-            Route::get('get/tenants/invoice/{tenant_id}', [DormitoryController::class, 'get_tenants_invoices']);
-            Route::post('create_or_update_dormitory', [DormitoryController::class, 'create_or_update_dormitory']);
-            Route::get('remove/{dormitory_id}', [DormitoryController::class, 'remove_dormitory']);
-        });
-
-        Route::prefix('/my-account/')->group(function() {
-            Route::post('update_personal', [Account::class, 'update_personal']);
-            Route::post('update_password', [Account::class, 'update_password']);
-            Route::get('get_activities', [Account::class, 'get_activities']);
-        });
-    });
-
     /** other routes */
     Route::get('logout', [Logout::class, 'logoutUser']);
 });

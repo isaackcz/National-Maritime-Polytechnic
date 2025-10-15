@@ -35,7 +35,7 @@ const AdminDormitory = () => {
             // API: GET /dormitory-admin/dormitory/get (existing, working)
             // RETURNS: { dormitories: Array<{ id, room_name, room_description, room_slot, room_cost, room_status, tenants_count }> }
             // NOTE: tenants_count comes from withCount(['tenants']) in backend
-            const response = await axios.get(`${url}/dormitory-admin/dormitory/get`, {
+            const response = await axios.get(`${url}/admin/dormitory/get`, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' }
             });
             const data = response?.data?.dormitories || [];
@@ -76,7 +76,7 @@ const AdminDormitory = () => {
                 room_cost: Number(newRoom.room_cost), 
                 httpMethod: "POST" 
             };
-            const response = await axios.post(`${url}/dormitory-admin/dormitory/create_or_update_dormitory`, payload, {
+            const response = await axios.post(`${url}/admin/dormitory/create_or_update_dormitory`, payload, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' }
             });
             if (response.status === 201 || response.status === 200) {
@@ -90,19 +90,19 @@ const AdminDormitory = () => {
         }
     };
 
-const deleteBuilding = async (id) => {
-  if (!window.confirm('Delete this building? This cannot be undone.')) return;
-  try {
-    const token = getToken('csrf-token');
-            
-    await axios.get(`${url}/dormitory-admin/dormitory/remove/${id}`, {
-                headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
-    });
-    await fetchBuildings();
-  } catch (error) {
-    alert(error?.response?.data?.message || 'Failed to delete building');
-  }
-};
+    const deleteBuilding = async (id) => {
+    if (!window.confirm('Delete this building? This cannot be undone.')) return;
+    try {
+        const token = getToken('csrf-token');
+                
+        await axios.get(`${url}/admin/dormitory/remove/${id}`, {
+                    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+        });
+        await fetchBuildings();
+    } catch (error) {
+        alert(error?.response?.data?.message || 'Failed to delete building');
+    }
+    };
 
     const startEdit = (row) => {
     setEditRowId(row.id);
@@ -125,7 +125,7 @@ const deleteBuilding = async (id) => {
                 document_id: editData.id, 
                 httpMethod: 'UPDATE' 
             };
-            await axios.post(`${url}/dormitory-admin/dormitory/create_or_update_dormitory`, payload, 
+            await axios.post(`${url}/admin/dormitory/create_or_update_dormitory`, payload, 
                 {
                     headers: { Authorization: `Bearer ${token}` 
                 }
@@ -149,7 +149,7 @@ const deleteBuilding = async (id) => {
             // API: GET /dormitory-admin/dormitory/get/tenants/{room_id} (existing, working)
             // RETURNS: { tenants: Array<DormitoryTenant with tenant relation> }
             // NOTE: Uses existing table columns - tenant includes User model data
-            const response = await axios.get(`${url}/dormitory-admin/dormitory/get/tenants/${room.id}`, {
+            const response = await axios.get(`${url}/admin/dormitory/get/tenants/${room.id}`, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
             });
             setRoomTenants(response?.data?.tenants || []);
@@ -172,7 +172,7 @@ const deleteBuilding = async (id) => {
             // API: GET /dormitory-admin/dormitory/get/tenants/{room_id} (existing, working)
             // RETURNS: { tenants: Array<DormitoryTenant with tenant relation> }
             // NOTE: Uses existing fields only - no backend endpoint needed for overdue calculation
-            const response = await axios.get(`${url}/dormitory-admin/dormitory/get/tenants/${room.id}`, {
+            const response = await axios.get(`${url}/admin/dormitory/get/tenants/${room.id}`, {
                 headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
             });
             const tenants = response?.data?.tenants || [];
@@ -235,7 +235,7 @@ const deleteBuilding = async (id) => {
             );
             
             const response = await axios.post(
-                `${url}/dormitory-admin/dormitory/create_or_update_dormitory`, 
+                `${url}/admin/dormitory/create_or_update_dormitory`, 
                 payload,
                 { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
             );
@@ -265,76 +265,140 @@ const deleteBuilding = async (id) => {
     const buildingColumns = [
     {
         name: 'Room Name',
-            selector: (row) => editRowId === row.id ? (
-                <input type="text" className="form-control form-control-sm" value={editData.room_name || ''} onChange={(e) => handleEditChange('room_name', e.target.value)} />
-            ) : (row.room_name || '—'),
+        selector: (row) => editRowId === row.id ? (
+            <input 
+                type="text" 
+                className="form-control form-control-sm" 
+                value={editData.room_name || ''} 
+                onChange={(e) => handleEditChange('room_name', e.target.value)} 
+                style={{ width: '100%' }}
+            />
+        ) : (row.room_name || '—'),
         sortable: true,
+        grow: 1,
+        minWidth: '150px',
+        wrap: true,
     },
     {
         name: 'Slot',
-            cell: (row) => editRowId === row.id ? (
-                <input type="number" className="form-control form-control-sm" value={editData.room_slot || 0} onChange={(e) => handleEditChange('room_slot', e.target.value)} style={{ width: '80px' }} />
-            ) : (
-                <span onClick={() => handleSlotClick(row)} style={{ cursor: 'pointer', color: '#0078d4', textDecoration: 'underline', fontWeight: '500' }} title="Click to view tenants">
-                    {row.tenants_count || 0}/{row.room_slot || 0}
-                </span>
+        cell: (row) => editRowId === row.id ? (
+            <input 
+                type="number" 
+                className="form-control form-control-sm" 
+                value={editData.room_slot || 0} 
+                onChange={(e) => handleEditChange('room_slot', e.target.value)} 
+                style={{ width: '100%', maxWidth: '80px' }} 
+            />
+        ) : (
+            <span 
+                onClick={() => handleSlotClick(row)} 
+                style={{ 
+                    cursor: 'pointer', 
+                    color: '#0078d4', 
+                    textDecoration: 'underline', 
+                    fontWeight: '1000',
+                    fontSize: '16px',
+                }} 
+                title="Click to view tenants"
+            >
+                {row.tenants_count || 0}/{row.room_slot || 0}
+            </span>
         ),
         sortable: true,
-        maxWidth: '100px',
+        grow: 1,
+        minWidth: '100px',
+        center: true,
     },
     {
         name: 'Daily Rate',
-            selector: (row) => editRowId === row.id ? (
-                <input type="number" className="form-control form-control-sm" value={editData.room_cost || ''} onChange={(e) => handleEditChange('room_cost', e.target.value)} style={{ width: '100px' }} />
-            ) : (row.room_cost ? `₱${Number(row.room_cost).toLocaleString()}` : '—'),
-            sortable: true,
+        selector: (row) => editRowId === row.id ? (
+            <input 
+                type="number" 
+                className="form-control form-control-sm" 
+                value={editData.room_cost || ''} 
+                onChange={(e) => handleEditChange('room_cost', e.target.value)} 
+                style={{ width: '100%', maxWidth: '120px', fontSize: '16px' }} 
+            />
+        ) : (row.room_cost ? `₱${Number(row.room_cost).toLocaleString()}` : '—'),
+        sortable: true,
+        grow: 1,
+        minWidth: '120px',
+        right: true,
+        fontSize: '14px',
+    },
+    {
+        name: 'Status',
+        cell: (row) => {
+            const status = row.room_status === 'ACTIVE' ? 'AVAILABLE' : (row.room_status === 'INACTIVE' ? 'UNAVAILABLE' : row.room_status);
+            return <span className={`badge badge-${status === 'AVAILABLE' ? 'success' : 'secondary'}`}>{status}</span>;
         },
-        {
-            name: 'Status',
-            cell: (row) => {
-                const status = row.room_status === 'ACTIVE' ? 'AVAILABLE' : (row.room_status === 'INACTIVE' ? 'UNAVAILABLE' : row.room_status);
-                return <span className={`badge badge-${status === 'AVAILABLE' ? 'success' : 'secondary'}`}>{status}</span>;
-            },
-            sortable: true,
-            maxWidth: '120px',
-        },
-        {
-            name: 'Overdue',
-            cell: (row) => (
-                <button 
-                    type="button" 
-                    className="btn btn-sm btn-outline-warning" 
-                    onClick={() => handleOverdueClick(row)}
-                    style={{ fontSize: '11px', padding: '2px 8px' }}
-                    title="Check for overdue tenants"
-                >
-                    <i className="fas fa-clock mr-1"></i>
-                    Check
-                </button>
-            ),
-            ignoreRowClick: true,
-            button: true,
-            maxWidth: '100px',
-        },
+        
+        sortable: true,
+        grow: 1,
+        minWidth: '120px',
+        center: true,
+    },
+    {
+        name: 'Overdue',
+        cell: (row) => (
+            <button 
+                type="button" 
+                className="btn btn-sm btn-outline-warning" 
+                onClick={() => handleOverdueClick(row)}
+                style={{ 
+                    fontSize: '14px', 
+                    padding: '2px 8px', 
+                    whiteSpace: 'nowrap',
+                    width: '100%',
+                    maxWidth: '100px'
+                }}
+                title="Check for overdue tenants"
+            >
+                <i className="fas fa-clock mr-1"></i>
+                Check
+            </button>
+        ),
+        ignoreRowClick: true,
+        button: true,
+        grow: 1,
+        minWidth: '110px',
+        center: true,
+    },
     {
         name: 'Action',
-            cell: (row) => editRowId === row.id ? (
-            <div className="btn-group btn-group-sm">
-                    <button type="button" className="btn btn-success" title="Save" onClick={() => saveBuilding(row)}><i className="fas fa-save"></i></button>
-                    <button type="button" className="btn btn-secondary" title="Cancel" onClick={cancelEdit}><i className="fas fa-times"></i></button>
+        cell: (row) => editRowId === row.id ? (
+            <div className="btn-group btn-group-sm" style={{ width: '100%' }}>
+                <button type="button" className="btn btn-success" title="Save" onClick={() => saveBuilding(row)}>
+                    <i className="fas fa-save"></i>
+                </button>
+                <button type="button" className="btn btn-secondary" title="Cancel" onClick={cancelEdit}>
+                    <i className="fas fa-times"></i>
+                </button>
             </div>
         ) : (
-            <div className="btn-group btn-group-sm">
-                    <button type="button" className="btn btn-info" title="Edit" onClick={() => startEdit(row)}><i className="fas fa-user-edit"></i></button>
-                    <button type="button" className={`btn btn-${row.room_status === 'ACTIVE' ? 'warning' : 'success'}`} title={row.room_status === 'ACTIVE' ? 'Disable Room' : 'Enable Room'} onClick={() => toggleRoomStatus(row)}><i className={`fas fa-${row.room_status === 'ACTIVE' ? 'ban' : 'check-circle'}`}></i></button>
-                    {row.tenants_count === 0 && <button type="button" className="btn btn-danger" title="Delete" onClick={() => deleteBuilding(row.id)}><i className="fas fa-trash"></i></button>}
+            <div className="btn-group btn-group-sm" style={{ width: '100%' }}>
+                <button type="button" className="btn btn-info" title="Edit" onClick={() => startEdit(row)}>
+                    <i className="fas fa-user-edit"></i>
+                </button>
+                <button type="button" className={`btn btn-${row.room_status === 'ACTIVE' ? 'warning' : 'success'}`} 
+                    title={row.room_status === 'ACTIVE' ? 'Disable Room' : 'Enable Room'} 
+                    onClick={() => toggleRoomStatus(row)}>
+                    <i className={`fas fa-${row.room_status === 'ACTIVE' ? 'ban' : 'check-circle'}`}></i>
+                </button>
+                {row.tenants_count === 0 && (
+                    <button type="button" className="btn btn-danger" title="Delete" onClick={() => deleteBuilding(row.id)}>
+                        <i className="fas fa-trash"></i>
+                    </button>
+                )}
             </div>
         ),
         ignoreRowClick: true,
         button: true,
-            maxWidth: '160px',
+        grow: 1,
+        minWidth: '150px',
+        center: true,
     },
-    ];
+];
 
     return (
         <>

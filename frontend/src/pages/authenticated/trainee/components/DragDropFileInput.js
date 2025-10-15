@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Button, Modal, IconButton } from '@mui/material';
 import { formLabelProps } from './inputStyles';
 
-const DragDropFileInput = ({ label, onChange, accept = 'image/*,application/pdf', fileName: externalFileName, error }) => {
+const DragDropFileInput = ({ label, onChange, accept = 'image/*,application/pdf', fileName: externalFileName, error, filePreviewUrl = null }) => {
     const [isDragging, setIsDragging] = useState(false);
+    const [previewModalOpen, setPreviewModalOpen] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState(null);
     // CRITICAL FIX: Use external fileName if provided, otherwise use internal state
     // This fixes the bug where file name disappears when navigating between stepper steps
     const [internalFileName, setInternalFileName] = useState('');
@@ -57,6 +59,15 @@ const DragDropFileInput = ({ label, onChange, accept = 'image/*,application/pdf'
             if (!externalFileName) {
                 setInternalFileName(file.name);
             }
+            
+            // Create preview URL for images
+            if (file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                setPreviewUrl(url);
+            } else {
+                setPreviewUrl(null);
+            }
+            
             const syntheticEvent = { target: { files: [file] }, fileName: file.name };
             onChange(syntheticEvent);
         }
@@ -79,6 +90,15 @@ const DragDropFileInput = ({ label, onChange, accept = 'image/*,application/pdf'
             if (!externalFileName) {
                 setInternalFileName(file.name);
             }
+            
+            // Create preview URL for images
+            if (file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                setPreviewUrl(url);
+            } else {
+                setPreviewUrl(null);
+            }
+            
             onChange({ ...e, fileName: file.name });
         }
     };
@@ -122,8 +142,52 @@ const DragDropFileInput = ({ label, onChange, accept = 'image/*,application/pdf'
                         <Typography sx={{ fontSize: '13px', color: '#28a745', mb: 0.5, fontWeight: 500 }}>
                             ✓ File selected: {fileName}
                         </Typography>
-                        <Typography sx={{ fontSize: '11px', color: '#6c757d' }}>
-                            Click to change file
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mt: 1 }}>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<i className="fas fa-eye" style={{ fontSize: '10px' }}></i>}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPreviewModalOpen(true);
+                                }}
+                                sx={{ 
+                                    fontSize: '10px', 
+                                    py: 0.5, 
+                                    px: 1.5,
+                                    minWidth: 'auto',
+                                    borderColor: '#0078d4',
+                                    color: '#0078d4',
+                                    '&:hover': {
+                                        borderColor: '#106ebe',
+                                        backgroundColor: '#f3f2f1'
+                                    }
+                                }}
+                            >
+                                View
+                            </Button>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<i className="fas fa-edit" style={{ fontSize: '10px' }}></i>}
+                                sx={{ 
+                                    fontSize: '10px', 
+                                    py: 0.5, 
+                                    px: 1.5,
+                                    minWidth: 'auto',
+                                    borderColor: '#28a745',
+                                    color: '#28a745',
+                                    '&:hover': {
+                                        borderColor: '#218838',
+                                        backgroundColor: '#d4edda'
+                                    }
+                                }}
+                            >
+                                Change
+                            </Button>
+                        </Box>
+                        <Typography sx={{ fontSize: '11px', color: '#6c757d', mt: 0.5 }}>
+                            Click anywhere else to change file
                         </Typography>
                     </>
                 ) : (
@@ -145,6 +209,97 @@ const DragDropFileInput = ({ label, onChange, accept = 'image/*,application/pdf'
                     style={{ display: 'none' }}
                 />
             </Box>
+            
+            {/* File Preview Modal */}
+            <Modal
+                open={previewModalOpen}
+                onClose={() => setPreviewModalOpen(false)}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    '& .MuiBackdrop-root': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)'
+                    }
+                }}
+            >
+                <Box
+                    sx={{
+                        position: 'relative',
+                        maxWidth: '90vw',
+                        maxHeight: '90vh',
+                        backgroundColor: 'white',
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        boxShadow: 24
+                    }}
+                >
+                    {/* Modal Header */}
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        p: 2, 
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5'
+                    }}>
+                        <Typography variant="h6" sx={{ fontSize: '16px', fontWeight: 600, color: '#323130' }}>
+                            {label} - {fileName}
+                        </Typography>
+                        <IconButton 
+                            onClick={() => setPreviewModalOpen(false)}
+                            sx={{ 
+                                color: '#666',
+                                '&:hover': { backgroundColor: '#e0e0e0' }
+                            }}
+                        >
+                            <i className="fas fa-times" style={{ fontSize: '16px' }}></i>
+                        </IconButton>
+                    </Box>
+                    
+                    {/* Modal Content */}
+                    <Box sx={{ p: 2, textAlign: 'center' }}>
+                        {previewUrl || filePreviewUrl ? (
+                            // Show image preview
+                            <img 
+                                src={previewUrl || filePreviewUrl} 
+                                alt={fileName}
+                                style={{
+                                    maxWidth: '100%',
+                                    maxHeight: '70vh',
+                                    objectFit: 'contain',
+                                    borderRadius: '4px'
+                                }}
+                                onError={(e) => {
+                                    console.log("Image preview error:", e.target.src);
+                                    e.target.style.display = 'none';
+                                    if (e.target.nextSibling) {
+                                        e.target.nextSibling.style.display = 'block';
+                                    }
+                                }}
+                            />
+                        ) : null}
+                        
+                        {/* Fallback for non-image files or loading errors */}
+                        <Box sx={{ 
+                            display: previewUrl || filePreviewUrl ? 'none' : 'block',
+                            p: 4,
+                            textAlign: 'center'
+                        }}>
+                            <i className="fas fa-file" style={{ fontSize: '4rem', color: '#666', marginBottom: '1rem' }}></i>
+                            <Typography variant="h6" sx={{ color: '#666', mb: 1 }}>
+                                File Preview Not Available
+                            </Typography>
+                            <Typography sx={{ color: '#888', fontSize: '14px' }}>
+                                This file type cannot be previewed in the browser.
+                            </Typography>
+                            <Typography sx={{ color: '#888', fontSize: '12px', mt: 1 }}>
+                                File: {fileName}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Box>
+            </Modal>
         </Box>
     );
 };

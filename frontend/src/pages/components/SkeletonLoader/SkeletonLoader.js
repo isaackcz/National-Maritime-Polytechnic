@@ -1,4 +1,4 @@
-import './SkeletonLoader.css';
+import { Box, Skeleton } from '@mui/material';
 
 const SkeletonLoader = ({ onViewMode }) => {
     return (
@@ -9,11 +9,11 @@ const SkeletonLoader = ({ onViewMode }) => {
                         <div className="col-xl-12">
                             <div className={`card w-100 ${onViewMode === 'update' && 'm-0 elevation-0'}`}>
                                 <div className='card-body'>
-                                    <div className="skeleton-image" style={{ 'width': '100%', 'height': '70px' }}></div>
-                                    <br />
-                                    <div className="skeleton-text mb-1" style={{ 'width': '80%', 'height': '20px' }}></div>
-                                    <div className="skeleton-text mb-1" style={{ 'width': '100%', 'height': '20px' }}></div>
-                                    <div className="skeleton-text mb-1" style={{ 'width': '50%', 'height': '20px' }}></div>
+                                    <Box>
+                                        <Skeleton />
+                                        <Skeleton animation="wave" />
+                                        <Skeleton animation={false} />
+                                    </Box>
                                 </div>
                             </div>
                         </div>

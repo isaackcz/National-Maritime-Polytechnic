@@ -52,12 +52,27 @@ const RoomTenantsModal = ({ show, onClose, room, tenants }) => {
     const tenantColumns = [
         {
             name: 'Name',
-            selector: (row) => row.user?.tenant.fname || `${row.user?.tenant.fname || ''} ${row.user?.tenant.lname || ''}`.trim() || '—',
+            selector: (row) => {
+                // Fix the data access pattern based on your actual API response
+                if (row.tenant?.fname && row.tenant?.lname) {
+                    return `${row.tenant.fname} ${row.tenant.lname}`.trim();
+                }
+                if (row.user?.tenant?.fname && row.user?.tenant?.lname) {
+                    return `${row.user.tenant.fname} ${row.user.tenant.lname}`.trim();
+                }
+                if (row.fname && row.lname) {
+                    return `${row.fname} ${row.lname}`.trim();
+                }
+                return '—';
+            },
             sortable: true,
         },
         {
             name: 'Email',
-            selector: (row) => row.user?.tenant.email || '—',
+            selector: (row) => {
+                // Fix the data access pattern for email
+                return row.tenant?.email || row.user?.tenant?.email || row.email || '—';
+            },
             sortable: true,
         },
         {
@@ -85,8 +100,6 @@ const RoomTenantsModal = ({ show, onClose, room, tenants }) => {
             name: 'Invoice Status',
             cell: (row) => {
                 const statusColors = { PAID: 'success', PENDING: 'warning', CANCELLED: 'secondary', TERMINATED: 'danger' };
-                // Backend relationship is 'tenant_invoices' (plural, hasMany)
-                // Access first invoice from array
                 const status = row.tenant_invoices?.[0]?.invoice_status || 'PENDING';
                 return <span className={`badge badge-${statusColors[status] || 'warning'}`}>{status}</span>;
             },

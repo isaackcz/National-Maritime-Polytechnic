@@ -13,18 +13,18 @@ class AdditionalTraineeInformation extends Model
         return $this->belongsTo(User::class);
     }
     public function general_info() {
-        return $this->belongsTo(GeneralInformation::class);
+        return $this->belongsTo(GeneralInformation::class, "general_information_id", "id");
     }
-    public function contact_person() {
-        return $this->belongsTo(ContactPerson::class);
+    public function contact() {
+        return $this->belongsTo(Contact::class, "contact_id","id");
     }
     public function trainee_registration_file() {
-        return $this->belongsTo(TrainingRegFile::class);
+        return $this->belongsTo(TrainingRegFile::class, "training_reg_file_id", "id");
     }
     public function educational_attainment() {
-        return $this->belongsTo(EducationalAttainment::class);
+        return $this->belongsTo(EducationalAttainment::class, "educational_attainment_id", "id");
     }
     public function latest_shipboard_attainment() {
-        return $this->belongsTo(LatestSBExp::class);
+        return $this->belongsTo(LatestSBExp::class, "latest_s_b_exp_id", "id");
     }
 }
