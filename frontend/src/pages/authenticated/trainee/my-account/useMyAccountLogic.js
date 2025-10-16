@@ -61,6 +61,7 @@ const useMyAccountLogic = () => {
         houseNo: '',
         postalCode: ''
     });
+    const [useSameAsCurrentAddress, setUseSameAsCurrentAddress] = useState(false);
  
 
     // Contact Information
@@ -393,7 +394,27 @@ const useMyAccountLogic = () => {
         console.log(`Uploaded ${fileType}:`, file);
     };
 
-
+    const handleUseSameAsCurrentAddress = (checked) => {
+        setUseSameAsCurrentAddress(checked);
+        if (checked) {
+            // Copy current address data to birthplace
+            setBirthplaceAddress({
+                ...addressData,
+                completeAddress: `${addressData.barangay}, ${addressData.municipality}, ${addressData.province}, ${addressData.region}`
+            });
+        } else {
+            // Clear birthplace data
+            setBirthplaceAddress({
+                region: '',
+                province: '',
+                municipality: '',
+                barangay: '',
+                houseNo: '',
+                postalCode: '',
+                completeAddress: ''
+            });
+        }
+    };
 
     const SubmitFormPersonal = async (e) => {
         e.preventDefault();
@@ -444,10 +465,12 @@ const useMyAccountLogic = () => {
             formData.append('gen_info_postal', addressData.postalCode || '');
             
             // STEP 4: Add birthplace address fields
-            formData.append('gen_info_birthplace_region', birthplaceAddress.region || '');
-            formData.append('gen_info_birthplace_province', birthplaceAddress.province || '');
-            formData.append('gen_info_birthplace_municipality', birthplaceAddress.municipality || '');
-            formData.append('gen_info_birthplace_barangay', birthplaceAddress.barangay || '');
+            // Use current address data if checkbox is checked, otherwise use birthplace data
+            const birthplaceData = useSameAsCurrentAddress ? addressData : birthplaceAddress;
+            formData.append('gen_info_birthplace_region', birthplaceData.region || '');
+            formData.append('gen_info_birthplace_province', birthplaceData.province || '');
+            formData.append('gen_info_birthplace_municipality', birthplaceData.municipality || '');
+            formData.append('gen_info_birthplace_barangay', birthplaceData.barangay || '');
             
             // STEP 5: Add contact information
             formData.append('gen_info_number_one', mobileNumber1 || 0);
@@ -712,6 +735,7 @@ const useMyAccountLogic = () => {
         birthdate, setBirthdate,
         birthplaceAddress, setBirthplaceAddress,
         addressData, setAddressData,
+        useSameAsCurrentAddress, setUseSameAsCurrentAddress,
         areaCode, setAreaCode,
         landline, setLandline,
         mobileNumber1, setMobileNumber1,
@@ -778,6 +802,7 @@ const useMyAccountLogic = () => {
         fetchPersonalInformation,
         GetActivities,
         CheckUploadedAvatar,
+        handleUseSameAsCurrentAddress,
         SubmitFormPersonal,
         SubmitFormChangePassword,
         

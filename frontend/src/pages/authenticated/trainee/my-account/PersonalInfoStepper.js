@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import {InputLabel, Select, Stepper, Step, StepLabel, StepButton, Box, Button, TextField, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Paper, Typography, Divider, Grid } from '@mui/material';
+import {InputLabel, Select, Stepper, Step, StepLabel, StepButton, Box, Button, TextField, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Paper, Typography, Divider, Grid, Checkbox } from '@mui/material';
 import { MuiTelInput } from 'mui-tel-input';
 import '../components/stepperCustom.css';
 import PhilippinesAddressDropdown from './PhilippinesAddressDropdown';
@@ -642,7 +642,7 @@ const ContactInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => 
         <SectionHeader icon="fas fa-map-marker-alt" title="Current Address" subtitle="Where do you currently reside?" />
         
         <InfoCard>
-            {(errors.region || errors.province || errors.municipality || errors.barangay || errors.houseNo || errors.postalCode) && (
+            {(errors.region || errors.province || errors.municipality || errors.barangay || errors.postalCode) && (
                 <Box sx={{ mb: 2, p: 1.5, backgroundColor: '#ffebee', borderRadius: 1, border: '1px solid #f44336' }}>
                     <Typography sx={{ fontSize: '13px', color: '#d32f2f', fontWeight: 500 }}>
                         <i className="fas fa-exclamation-circle mr-2"></i>
@@ -661,7 +661,29 @@ const ContactInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => 
         <SectionHeader icon="fas fa-birthdate-cake" title="Birthplace" subtitle="Where were you born?" />
         
         <InfoCard>
-            {(errors.birthplaceRegion || errors.birthplaceProvince || errors.birthplaceMunicipality || errors.birthplaceBarangay) && (
+            {/* Checkbox to use same as current address */}
+            <Box sx={{ mb: 2, p: 1.5, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #dee2e6' }}>
+                <FormControlLabel
+                    control={
+                        <Checkbox
+                            checked={logic.useSameAsCurrentAddress}
+                            onChange={(e) => logic.handleUseSameAsCurrentAddress(e.target.checked)}
+                            color="primary"
+                            sx={{ 
+                                '&.Mui-checked': { color: '#0078D4' },
+                                '& .MuiSvgIcon-root': { fontSize: 20 }
+                            }}
+                        />
+                    }
+                    label={
+                        <Typography sx={{ fontSize: '13px', fontWeight: 500, color: '#323130' }}>
+                            <i className="fas fa-copy mr-2 text-primary"></i>
+                            Use same address as current address
+                        </Typography>
+                    }
+                />
+            </Box>
+            {!logic.useSameAsCurrentAddress && (errors.birthplaceRegion || errors.birthplaceProvince || errors.birthplaceMunicipality || errors.birthplaceBarangay) && (
                 <Box sx={{ mb: 2, p: 1.5, backgroundColor: '#ffebee', borderRadius: 1, border: '1px solid #f44336' }}>
                     <Typography sx={{ fontSize: '13px', color: '#d32f2f', fontWeight: 500 }}>
                         <i className="fas fa-exclamation-circle mr-2"></i>
@@ -669,14 +691,28 @@ const ContactInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => 
                     </Typography>
                 </Box>
             )}
-            <PhilippinesAddressDropdown 
-                addressData={logic.birthplaceAddress} 
-                setAddressData={logic.setBirthplaceAddress} 
-                showPostalCode={false}
-                errors={errors}
-                onFieldTouch={onFieldTouch}
-                fieldPrefix="birthplace"
-            />
+            {!logic.useSameAsCurrentAddress && (
+                <PhilippinesAddressDropdown 
+                    addressData={logic.birthplaceAddress} 
+                    setAddressData={logic.setBirthplaceAddress} 
+                    showHouseAndPostal={false}
+                    showPostalCode={false}
+                    errors={errors}
+                    onFieldTouch={onFieldTouch}
+                    fieldPrefix="birthplace"
+                />
+            )}
+            {logic.useSameAsCurrentAddress && (
+                <Box sx={{ p: 1.5, backgroundColor: '#e7f3ff', borderRadius: 1, border: '1px solid #0078d4' }}>
+                    <Typography sx={{ fontSize: '13px', color: '#0078d4', fontWeight: 500, display: 'flex', alignItems: 'center' }}>
+                        <i className="fas fa-info-circle mr-2"></i>
+                        Birthplace will use the same address as your current address
+                    </Typography>
+                    <Typography sx={{ fontSize: '12px', color: '#323130', mt: 1, fontStyle: 'italic' }}>
+                        Current address: {logic.addressData?.barangay}, {logic.addressData?.municipality}, {logic.addressData?.province}, {logic.addressData?.region}
+                    </Typography>
+                </Box>
+            )}
         </InfoCard>
     </Box>
 );

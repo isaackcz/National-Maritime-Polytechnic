@@ -82,7 +82,6 @@ const PhilippinesAddressDropdown = ({ addressData, setAddressData, showHouseAndP
 
     const buildCompleteAddress = () => {
         const parts = [];
-        if (showHouseAndPostal && addressData?.houseNo) parts.push(addressData.houseNo);
         if (addressData?.barangay) parts.push(addressData.barangay);
         if (addressData?.municipality) parts.push(addressData.municipality);
         if (showHouseAndPostal && showPostalCode && addressData?.postalCode) parts.push(addressData.postalCode);

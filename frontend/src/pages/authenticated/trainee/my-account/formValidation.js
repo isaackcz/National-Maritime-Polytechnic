@@ -113,30 +113,29 @@ export const validateStep2 = (logic) => {
         errors.barangay = 'Barangay is required';
     }
     
-    if (!logic.addressData?.houseNo || logic.addressData.houseNo.trim() === '') {
-        errors.houseNo = 'House No./Street is required';
-    }
-    
     if (!logic.addressData?.postalCode || logic.addressData.postalCode.trim() === '') {
         errors.postalCode = 'Postal Code is required';
     } else if (!/^\d{4}$/.test(logic.addressData.postalCode)) {
         errors.postalCode = 'Postal Code must be 4 digits';
     }
     
-    if (!logic.birthplaceAddress?.region || logic.birthplaceAddress.region.trim() === '') {
-        errors.birthplaceRegion = 'Birthplace Region is required';
-    }
-    
-    if (!logic.birthplaceAddress?.province || logic.birthplaceAddress.province.trim() === '') {
-        errors.birthplaceProvince = 'Birthplace Province is required';
-    }
-    
-    if (!logic.birthplaceAddress?.municipality || logic.birthplaceAddress.municipality.trim() === '') {
-        errors.birthplaceMunicipality = 'Birthplace Municipality is required';
-    }
-    
-    if (!logic.birthplaceAddress?.barangay || logic.birthplaceAddress.barangay.trim() === '') {
-        errors.birthplaceBarangay = 'Birthplace Barangay is required';
+    // Only validate birthplace if not using same as current address
+    if (!logic.useSameAsCurrentAddress) {
+        if (!logic.birthplaceAddress?.region || logic.birthplaceAddress.region.trim() === '') {
+            errors.birthplaceRegion = 'Birthplace Region is required';
+        }
+        
+        if (!logic.birthplaceAddress?.province || logic.birthplaceAddress.province.trim() === '') {
+            errors.birthplaceProvince = 'Birthplace Province is required';
+        }
+        
+        if (!logic.birthplaceAddress?.municipality || logic.birthplaceAddress.municipality.trim() === '') {
+            errors.birthplaceMunicipality = 'Birthplace Municipality is required';
+        }
+        
+        if (!logic.birthplaceAddress?.barangay || logic.birthplaceAddress.barangay.trim() === '') {
+            errors.birthplaceBarangay = 'Birthplace Barangay is required';
+        }
     }
     
     return errors;
