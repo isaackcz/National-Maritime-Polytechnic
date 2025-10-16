@@ -8,6 +8,7 @@ import WelcomeGreeting from '../../../components/WelcomeGreeting';
 import useGetToken from '../../../../hooks/useGetToken';
 import CitizenCharterModal from './CitizenCharterModal';
 import DigitalID from './DigitalID';
+import useEnrollmentStatus from '../../../../hooks/useEnrollmentStatus';
 
 const TraineeMenu = () => {
     const location = useLocation();
@@ -22,6 +23,7 @@ const TraineeMenu = () => {
     const { getToken, removeToken } = useGetToken();
 
     const { userData } = useGetCurrentUser();
+    const { isLoading: isCheckingEnrollment, isEnrolled } = useEnrollmentStatus();
 
     useEffect(() => { 
         setShowLoader(true); 
@@ -41,6 +43,8 @@ const TraineeMenu = () => {
             setActiveMenu('dormitory');
         } else if(locationPaths.includes('trainee/my-account')) {
             setActiveMenu('my-account');
+        } else if(locationPaths.includes('trainee/invoices')) {
+            setActiveMenu('invoices');
         } else {}
     }, [locationPaths]);
 
@@ -72,7 +76,7 @@ const TraineeMenu = () => {
             { isShowingMenu && <SubmitLoadingAnim cls='loader2' /> }
             { isProcessingLogout && <SubmitLoadingAnim cls='loader2' /> }
             <CitizenCharterModal id="citizen_charter_0" />
-            <DigitalID id={`${userData?.id}`} />
+            { isEnrolled && <DigitalID id={`${userData?.id}`} /> }
 
 
             <nav className="main-header navbar navbar-expand navbar-primary border-bottom navbar-dark text--fontPos13--xW8hS">
@@ -87,9 +91,15 @@ const TraineeMenu = () => {
 
                 <ul className="navbar-nav ml-auto">
                     <li className="nav-item">
-                        <a className="nav-link" data-toggle="modal" data-target={`#digitalID-${userData?.id}`} title="Digital ID" href="#" role="button">
-                            <i className="fas fa-id-badge"></i>
-                        </a>
+                        { isEnrolled ? (
+                            <a className="nav-link" data-toggle="modal" data-target={`#digitalID-${userData?.id}`} title="Digital ID" href="#" role="button">
+                                <i className="fas fa-id-badge"></i>
+                            </a>
+                        ) : (
+                            <span className="nav-link disabled" title="Enroll to get digital ID" style={{ cursor: 'not-allowed', opacity: 0.6 }}>
+                                <i className="fas fa-id-badge"></i>
+                            </span>
+                        ) }
                     </li>
 
                     <li className="nav-item">
@@ -205,6 +215,12 @@ const TraineeMenu = () => {
                                 <Link to="/trainee/my-account" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('trainee/my-account') ? 'active' : ''}`} onClick={() => setActiveMenu('my-account')}>
                                     <span className="nav-icon material-icons-outlined">manage_accounts</span>
                                     <p>My Account</p>
+                                </Link>
+                            </li>
+                            <li className="nav-item">
+                                <Link to="/trainee/invoices" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('trainee/invoices') ? 'active' : ''}`} onClick={() => setActiveMenu('invoices')}>
+                                    <span className="nav-icon material-icons-outlined">Invoices</span>
+                                    <p>Invoices</p>
                                 </Link>
                             </li>
                         </ul>

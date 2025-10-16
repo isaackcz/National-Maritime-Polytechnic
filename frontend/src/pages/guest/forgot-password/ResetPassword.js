@@ -18,6 +18,7 @@ import useShowSubmitLoader from '../../../hooks/useShowSubmitLoader';
 import useSystemURLCon from '../../../hooks/useSystemURLCon';
 import useShowToaster from '../../../hooks/useShowToaster';
 import axios from 'axios';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 const Register = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,6 +33,7 @@ const Register = () => {
     const [confirm_password, setConfirmPassword] = useState("");
     const [isPasswordRuleValid, setIsPasswordRuleValid] = useState(false);
     const { EndAdornment, visible, inputType } = useToggleShowHidePass();
+    const [googleCaptcha, setGoogleCaptcha] = useState(null);
 
     useEffect(() => {
         setEmail(urlParams.get('email'));
@@ -52,6 +54,7 @@ const Register = () => {
             formData.append('email', email);
             formData.append('password', password);
             formData.append('password_confirmation', confirm_password);
+            formData.append('google_captcha', googleCaptcha);
 
             const response = await axios.post(`${url}/reset-password`, formData, {
                 onUploadProgress: (progressEvent) => {
@@ -81,7 +84,7 @@ const Register = () => {
             { isSubmitting && <SubmitLoadingAnim cls="loader" /> }
             <Toast />
 
-            <div className='guest-card-height'>
+            <div className='guest-bg'>
                 <div className="container">
                     <div className='row d-flex align-items-center justify-content-center'>
                         <div className='col-xl-8'>
@@ -148,14 +151,15 @@ const Register = () => {
                                             </div>
                                         </div>
                         
-                                        {/* <div className="g-recaptcha" data-sitekey="6Ld4u90rAAAAAMZEiRe7Z9IKM4uF6tL-TPhilDwe"></div> */}
-                                        <div className='alert alert-default border mt-2'>
-                                            RECAPTCHA CONTAINER
-                                        </div>
+                                        <ReCAPTCHA
+                                            className='mt-2'
+                                            sitekey="6Lc5EOgrAAAAANxyOJtDCIGKE0lA-AZQkWS2KwmV"
+                                            onChange={(e) => { setGoogleCaptcha(e); }}
+                                        />
 
                                         <div className="row mt-3">
                                             <div className="col-xl-12 mb-2">
-                                                <button type="submit" disabled={!email || !password || !confirm_password || !isPasswordRuleValid} className="text--fontPos13--xW8hS btn btn-primary btn-block elevation-1">
+                                                <button type="submit" disabled={!email || !password || !confirm_password || !isPasswordRuleValid || !googleCaptcha} className="text--fontPos13--xW8hS btn btn-primary btn-block elevation-1">
                                                     { isSubmitting ? 'PLEASE WAIT..' : 'SUBMIT' }
                                                 </button>
                                             </div>

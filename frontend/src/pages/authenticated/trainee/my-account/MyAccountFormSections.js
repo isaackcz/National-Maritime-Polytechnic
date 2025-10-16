@@ -1,15 +1,54 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ImageCropModal from '../components/ImageCropModal';
+import axios from 'axios';
+import useSystemURLCon from '../../../../hooks/useSystemURLCon';
+import useGetToken from '../../../../hooks/useGetToken';
 
 
 export const ProfilePictureSection = ({ 
     avatarPreview, 
     fileInputRef, 
     CheckUploadedAvatar, 
-    setAvatarPreview 
+    setAvatarPreview,
+    trainee_general_info
 }) => {
     const [cropModalOpen, setCropModalOpen] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const { url } = useSystemURLCon();
+    const { getToken } = useGetToken();
+
+    useEffect(() => {
+        const currentProfile = trainee_general_info?.[0]?.profile_picture;
+        if (currentProfile && !avatarPreview) {
+            setAvatarPreview(currentProfile);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [trainee_general_info]);
+
+    useEffect(() => {
+        const fetchTraineeInfo = async () => {
+            try {
+                if (avatarPreview) return; // already set via props or prior fetch
+                const token = getToken('csrf-token');
+                const response = await axios.get(`${url}/my-account/get_trainee_general_info`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: 'application/json'
+                    }
+                });
+                const info = response?.data?.trainee_general_info || response?.data?.data?.trainee_general_info;
+                const profile = Array.isArray(info) ? info[0]?.profile_picture : info?.profile_picture;
+                if (profile) {
+                    setAvatarPreview(profile);
+                }
+            } catch (error) {
+                console.error('Failed to fetch trainee general info:', error);
+            }
+        };
+        fetchTraineeInfo();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleFileSelect = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -23,12 +62,12 @@ export const ProfilePictureSection = ({
         }
     };
 
-    const handleCropComplete = (croppedBlob) => {
+    const handleCropComplete = async (croppedBlob) => {
         const croppedFile = new File([croppedBlob], 'profile.jpg', { type: 'image/jpeg' });
-        
         const croppedImageUrl = URL.createObjectURL(croppedBlob);
         setAvatarPreview(croppedImageUrl);
-        
+
+        // Keep existing local handling if used elsewhere
         const syntheticEvent = {
             target: {
                 files: [croppedFile],
@@ -36,6 +75,26 @@ export const ProfilePictureSection = ({
             }
         };
         CheckUploadedAvatar(syntheticEvent, 'avatar');
+
+        // Submit directly from here
+        try {
+            setIsUploading(true);
+            const token = getToken('csrf-token');
+            const formData = new FormData();
+            formData.append('profile_picture', croppedFile);
+            await axios.post(`${url}/my-account/create_or_update_additional_info`, formData, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json',
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+        } catch (error) {
+            // Surface in console for now; UI can be enhanced later
+            console.error('Failed to upload profile picture:', error);
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     return (
@@ -82,7 +141,7 @@ export const ProfilePictureSection = ({
                                     }}
                                     onClick={() => fileInputRef.current?.click()}
                                 >
-                                    <i className="fas fa-camera text-white" style={{fontSize: '12px'}}></i>
+                                    <i className={`fas ${isUploading ? 'fa-spinner fa-spin' : 'fa-camera'} text-white`} style={{fontSize: '12px'}}></i>
                                 </div>
                                 <input
                                     type="file" 

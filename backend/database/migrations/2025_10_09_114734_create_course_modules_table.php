@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('acronym');
             $table->longText('compendium');
+            $table->longText('file');
             $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
             $table->timestamps();
         });

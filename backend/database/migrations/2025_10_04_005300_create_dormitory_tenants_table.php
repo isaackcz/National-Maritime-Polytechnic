@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignIdFor(User::class)->constrained()->ondelete('cascade');
             $table->date('tenant_from_date')->nullable();
             $table->date('tenant_to_date')->nullable();
-            $table->enum('tenant_status', ['PENDING', 'TERMINATED', 'APPROVED', 'CANCELLED', 'EXTENDING'])->default('PENDING');
+            $table->enum('tenant_status', ['PENDING', 'TERMINATED', 'APPROVED', 'CANCELLED', 'EXTENDING', 'PROCESSING'])->default('PENDING');
             $table->timestamps();
         });
     }

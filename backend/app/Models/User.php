@@ -54,13 +54,11 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     public function additional_trainee_info() {
-        return $this->hasOne(AdditionalTraineeInformation::class);
+        return $this->hasOne(AdditionalTraineeInformation::class, 'user_id', 'id');
     }
-
     public function trainee_dormitory()  {
-        return $this->hasMany(DormitoryTenant::class, 'id', 'dormitory_tenant_id');
+        return $this->hasMany(DormitoryTenant::class, 'user_id', 'id');
     }
-
     public function trainee_enrolled_courses() {
         return $this->hasMany(EnrolledCourse::class);
     }

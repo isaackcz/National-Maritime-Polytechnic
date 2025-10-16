@@ -9,11 +9,13 @@ use App\Models\{
     User,
     AuditTrail,
     GeneralInformation,
-    ContactPerson,
+    Contact,
     EducationalAttainment,
-    LatestShipboardExperience,
-    TraineeRegistrationFile,
-    AdditionalTraineeInfo
+    LatestSBExp,
+    TrainingRegFile,
+    AdditionalTraineeInformation,
+    MainCourse,
+    MainSchool
 };
 
 class MyAccount extends Controller
@@ -23,7 +25,7 @@ class MyAccount extends Controller
             $trainee_general_info = User::with([
                 'additional_trainee_info',
                 'additional_trainee_info.general_info',
-                'additional_trainee_info.contact_person',
+                'additional_trainee_info.contact',
                 'additional_trainee_info.trainee_registration_file',
                 'additional_trainee_info.educational_attainment',
                 'additional_trainee_info.latest_shipboard_attainment'
@@ -34,14 +36,24 @@ class MyAccount extends Controller
             return response()->json(['message'=> $e->getMessage()], 500);
         }
     }
-
     public function create_or_update_additional_info (Request $request) {
-       $validations = [
-            'gen_info_status' => 'required|in:NEW,RETURNEE',
+        // Check if user has existing trainee information and files
+        $user = User::with(['additional_trainee_info.trainee_registration_file'])->find($request->user()->id);
+        $hasExistingFiles = $user?->additional_trainee_info?->trainee_registration_file ?? null;
+        
+        // Base validation rules
+        $validations = [
+            'fname'=> 'required|string',
+            'lname'=> 'required|string',
+            'mname'=> 'required|string',
+            'suffix'=> 'required|string',
+            'birthdate'=> 'required|date',
+            'gen_info_status' => 'required',
+            'gen_info_trainee_id' => 'required|integer',
             'gen_info_srn' => 'required|integer',
-            'gen_info_gender' => 'required|in:MALE,FEMALE',
+            'gen_info_gender' => 'required',
             'gen_info_citizenship' => 'required|string',
-            'gen_info_civil_status' => 'required|in:SINGLE,MARRIED,WIDOWED,DIVORCED,SEPARATED',
+            'gen_info_civil_status' => 'required',
             'gen_info_house_no' => 'required|string',
             'gen_info_region' => 'required|string',
             'gen_info_province' => 'required|string',
@@ -64,15 +76,27 @@ class MyAccount extends Controller
             'person_number_one' => 'required|string',
             'person_number_two' => 'required|string',
             //educational attainment
-            'school_course_taken' => 'required|string',
-            'school_address' => 'required|string',
-            'school_graduated' => 'required|string',
-            //trainee registration files
-            'file_e_signature' => 'required',
-            'file_id_picture' => 'required',
-            'file_srn_number' => 'required',
-            'file_sea_service' => 'required',
+            'school_course_taken' => 'required',
+            'school' => 'required',
+            'school_year_graduated' => 'required|string',
         ];
+
+        // File validation: required only if no existing files OR if creating new entry
+        if (!$hasExistingFiles) {
+            // For new entries, files are required
+            $validations['file_e_signature'] = 'required';
+            $validations['file_id_picture'] = 'required';
+            $validations['file_srn_number'] = 'required';
+            $validations['file_sea_service'] = 'required';
+        } else {
+            // For updates with existing files, only validate if new files are provided
+            $validations['file_e_signature'] = 'sometimes|file';
+            $validations['file_id_picture'] = 'sometimes|file';
+            $validations['file_srn_number'] = 'sometimes|file';
+            $validations['file_sea_service'] = 'sometimes|file';
+            $validations['file_last_disembarkment'] = 'sometimes|file';
+            $validations['file_marina_license'] = 'sometimes|file';
+        }
 
         $validator = \Validator::make($request->all(), $validations);
 
@@ -82,11 +106,16 @@ class MyAccount extends Controller
         } else {
             try {
                 DB::beginTransaction();
-
-                $general_info = User::with(['additional_trainee_info.general_info'])->where('id', $request->user()->id)->first();                
-                $this_gen_info = $request->httpMethod == ($general_info ? "UPDATE" : "POST") 
-                        ? new GeneralInformation
-                        : GeneralInformation::find($general_info->additional_trainee_info->id);
+                $user->fname = $request->fname;
+                $user->lname = $request->lname;
+                $user->mname = $request->mname;
+                $user->suffix = $request->suffix;
+                $user->birthdate = $request->birthdate;
+                $user->save();
+                
+                //general info
+                $general_info = $user?->additional_trainee_info?->general_information_id;  
+                $this_gen_info = $general_info ? GeneralInformation::findOrFail($general_info) : new GeneralInformation();
 
                 $this_gen_info->gen_info_status = $request->gen_info_status;
                 $this_gen_info->gen_info_trainee_id = $request->gen_info_trainee_id;
@@ -99,6 +128,10 @@ class MyAccount extends Controller
                 $this_gen_info->gen_info_province = $request->gen_info_province;
                 $this_gen_info->gen_info_municipality = $request->gen_info_municipality;
                 $this_gen_info->gen_info_barangay = $request->gen_info_barangay;
+                $this_gen_info->gen_info_birthplace_region = $request->gen_info_birthplace_region;
+                $this_gen_info->gen_info_birthplace_province = $request->gen_info_birthplace_province;
+                $this_gen_info->gen_info_birthplace_municipality = $request->gen_info_birthplace_municipality;
+                $this_gen_info->gen_info_birthplace_barangay = $request->gen_info_birthplace_barangay;
                 $this_gen_info->gen_info_postal = $request->gen_info_postal;
                 $this_gen_info->gen_info_number_one = $request->gen_info_number_one;
                 $this_gen_info->gen_info_number_two = $request->gen_info_number_two;
@@ -108,118 +141,131 @@ class MyAccount extends Controller
                 $this_gen_info->save();
 
                 //contact
+                $contact_info = $user?->additional_trainee_info?->contact_id; 
+                $this_contact_info = $contact_info ? Contact::find($contact_info) : New Contact();
 
-                $contact_info = User::with(["additional_trainee_info.contact_person"])->where('id',$request->user()->id)->first();
-                $this_contact = $request->httpMethod == ($contact_info ? "UPDATE" : "POST") 
-                    ? new ContactPerson
-                    : ContactPerson::find($contact_info->additional_trainee_info->id);
-
-                $this_contact->person_name = $request->person_name;
-                $this_contact->person_address = $request->person_address;
-                $this_contact->person_relationship = $request->person_relationship;
-                $this_contact->person_email = $request->person_email;
-                $this_contact->person_number_one = $request->person_number_one;
-                $this_contact->person_number_two = $request->person_number_two;
-                $this_contact->landline = $request->landline;
-                $this_contact->save();
-
+                $this_contact_info->person_name = $request->person_name;
+                $this_contact_info->person_address = $request->person_address;
+                $this_contact_info->person_relationship = $request->person_relationship;
+                $this_contact_info->person_email = $request->person_email;
+                $this_contact_info->person_number_one = $request->person_number_one;
+                $this_contact_info->person_number_two = $request->person_number_two;
+                $this_contact_info->person_landline = $request->landline;
+                $this_contact_info->save();
+                
                 //education
-                $education_info = User::with(["additional_trainee_info.educational_attainment"])->where('id',$request->user()->id)->first();
-                $this_education = $request->httpMethod == ($education_info ? "UPDATE" : "POST") 
-                    ? new EducationalAttainment
-                    : EducationalAttainment::find($education_info->additional_trainee_info->id);
+                $education_info = $user?->additional_trainee_info?->educational_attainment_id;
+                $this_education_info = $education_info ? EducationalAttainment::find($education_info) : new EducationalAttainment();
+            
+                $this_education_info->main_course_id= $request->school_course_taken;
+                $this_education_info->main_school_id = $request->school;
+                $this_education_info->school_graduated = $request->school_year_graduated;
+                $this_education_info->save();
 
-                $this_education->school_course_taken = $request->school_course_taken;
-                $this_education->school_address = $request->school_address;
-                $this_education->school_graduated = $request->school_graduated;
-                $this_education->save();
+                //disembarkment
+                $latest_disembarkment_info = $user?->additional_trainee_info?->latest_s_b_exp_id;
+                $this_latest_disembarkment_info = $latest_disembarkment_info ? LatestSBExp::find( $latest_disembarkment_info) : new LatestSBExp();
 
-                //train files
-                $trainee_files_info = User::with(["additional_trainee_info.trainee_registration_file"])->where('id',$request->user()->id)->first();
-                $this_trainee_files = $request->httpMethod == ($trainee_files_info ? "UPDATE" : "POST") 
-                    ? new TraineeRegistrationFile         
-                    : TraineeRegistrationFile::find($trainee_files_info->additional_trainee_info->id);
+                $this_latest_disembarkment_info->ship_status = $request->ship_status;
+                $this_latest_disembarkment_info->ship_license = $request->ship_license;
+                $this_latest_disembarkment_info->ship_rank = $request->ship_rank;
+                $this_latest_disembarkment_info->ship_date_of_disembarkment = $request->ship_date_of_embarkment;
+                $this_latest_disembarkment_info->ship_principal = $request->ship_principal;
+                $this_latest_disembarkment_info->ship_manning = $request->ship_manning;
+                $this_latest_disembarkment_info->ship_landline = $request->ship_landline;
+                $this_latest_disembarkment_info->ship_number = $request->ship_number;
+                $this_latest_disembarkment_info->save();
+
+                $trainee_files_info = $user?->additional_trainee_info?->training_reg_file_id;
+                $this_trainee_files_info = $trainee_files_info ? TrainingRegFile::find($trainee_files_info) : new TrainingRegFile();
+
+                // Save the TrainingRegFile record first to get an ID (especially for new records)
+                $this_trainee_files_info->save();
 
                 //e-signature
                 if ($request->hasFile('file_e_signature')){
-                    $this_trainee_files->file_e_signature = $this->savefile($request->file_e_signature, $this_trainee_files->file_e_signature, "file_e_signature");
+                    $oldFilename = $this_trainee_files_info->file_e_signature;
+                    $newFilename = $this->savefile($request->file_e_signature, $this_trainee_files_info->file_e_signature);
+                    $this_trainee_files_info->file_e_signature = $newFilename;
+                    \Log::info("Signature file update: old={$oldFilename}, new={$newFilename}");
                 }
                 //file_id_picture
                 if ($request->hasFile('file_id_picture')){
-                    $this_trainee_files->file_id_picture = $this->savefile($request->file_id_picture, $this_trainee_files->file_id_picture, "file_id_picture");
+                    $this_trainee_files_info->file_id_picture = $this->savefile($request->file_id_picture, $this_trainee_files_info->file_id_picture);
                 }
                 //file_srn_number
                 if ($request->hasFile('file_srn_number')){
-                    $this_trainee_files->file_srn_number = $this->savefile($request->file_srn_number, $this_trainee_files->file_srn_number, "file_srn_number");
+                    $this_trainee_files_info->file_srn_number = $this->savefile($request->file_srn_number, $this_trainee_files_info->file_srn_number);
                 }
                 //file_last_embarkment
                 if($request->hasFile('file_last_disembarkment')){
-                    $this_trainee_files->file_last_disembarkment = $this->savefile($request->file_last_disembarkment, $this_trainee_files->file_last_disembarkment, "file_last_disembarkment");
+                    $this_trainee_files_info->file_last_disembarkment = $this->savefile($request->file_last_disembarkment, $this_trainee_files_info->file_last_disembarkment);
                 }
                 //file_marina_license
                 if($request->hasFile('file_marina_license')){
-                    $this_trainee_files->file_marina_license = $this->savefile($request->file_marina_license, $this_trainee_files->file_marina_license, "file_marina_license");
+                    $this_trainee_files_info->file_marina_license = $this->savefile($request->file_marina_license, $this_trainee_files_info->file_marina_license);
                 }
                 //file_sea_service
                 if($request->hasFile('file_sea_service')){
-                    $this_trainee_files->file_sea_service = $this->savefile($request->file_sea_service, $this_trainee_files->file_sea_service, "file_sea_service");
+                    $this_trainee_files_info->file_sea_service = $this->savefile($request->file_sea_service, $this_trainee_files_info->file_sea_service);
                 }
-                $this_trainee_files->save();
+                
+                // Save again after updating file fields
+                $this_trainee_files_info->save();
+                \Log::info("TrainingRegFile saved with ID: {$this_trainee_files_info->id}, signature: {$this_trainee_files_info->file_e_signature}");
 
-                $last_disembarkment_info = User::with(["additional_trainee_info.latest_shipboard_attainment"])->where('id',$request->user()->id)->first();
-                $this_embarkment = $request->httpMethod == ($last_disembarkment_info ? "UPDATE" : "POST") 
-                    ? new LatestShipboardExperience
-                    : LatestShipboardExperience::find($last_disembarkment_info->additional_trainee_info->id);
-
-                $this_embarkment->ship_status = $request->ship_status;
-                $this_embarkment->ship_license = $request->ship_license;
-                $this_embarkment->ship_rank = $request->ship_rank;
-                $this_embarkment->ship_date_of_embarkment = $request->ship_date_of_embarkment;
-                $this_embarkment->ship_principal = $request->ship_principal;
-                $this_embarkment->ship_manning = $request->ship_manning;
-                $this_embarkment->ship_landline = $request->ship_landline;
-                $this_embarkment->ship_number = $request->ship_number;
-                $this_embarkment->save();
-
-
-                $additional_info = User::with(["additional_trainee_info"])->where('id',$request->user()->id)->first();
-                $this_additional_info = $request->httpMethod == ($additional_info ? "UPDATE" : "POST") 
-                    ? new AdditionalTraineeInfo
-                    : AdditionalTraineeInfo::find($additional_info->id);
+                //Additional Information
+                $additional_info = $user?->additional_trainee_info?->id;
+                $this_additional_info = $general_info ? AdditionalTraineeInformation::findOrFail($additional_info) : new AdditionalTraineeInformation();
 
                 $this_additional_info->user_id = $request->user()->id;        
                 $this_additional_info->general_information_id = $this_gen_info->id;
-                $this_additional_info->contact_person_id = $this_contact->id;
-                $this_additional_info->latest_shipboard_experience_id = $this_embarkment->id;
-                $this_additional_info->educational_attainment_id = $this_education->id;
-                $this_additional_info->trainee_registration_file = $this_trainee_files->id;
+                $this_additional_info->contact_id = $this_contact_info->id;
+                $this_additional_info->latest_s_b_exp_id = $this_latest_disembarkment_info->id;
+                $this_additional_info->educational_attainment_id = $this_education_info->id;
+                $this_additional_info->training_reg_file_id = $this_trainee_files_info->id;
                 $this_additional_info->save();
 
                 $new_log = new AuditTrail;
                 $new_log->user_id = $request->user()->id;
-                $new_log->actions = "You have " . ($request->httpMethod == "POST" ? 'created' : 'updated') . "  your information.";
+                $new_log->actions = "You have posted your new information!";
                 $new_log->save();
 
                 DB::commit();
-                return response()->json(['message' => "You've " . ($request->httpMethod == "POST" ? 'created' : 'updated') . " your information. "], 201);
+                
+                return response()->json(['message' => "You have posted your new information!"], 201);
             } catch (\Exception $e) {
-                DB::rollback();
-                return response()->json(['message' => "Allen Alfred Beato"], 500);
+                DB::rollback(); 
+                return response()->json(['message'=> $e->getMessage()], 500);
             }
         }
     }
-
-    public function savefile($request, $this_trainee_files, $name){
-        if ($request !== $this_trainee_files)
-        {
-            if (file_exists(public_path("trainee-files/" . $this_trainee_files->name))){
-                unlink(public_path('trainee-files/' . $this_trainee_files->name));
+    public function savefile($fileUploaded, $existingFileName) {
+        if($fileUploaded){
+            \Log::info("savefile called: existingFileName={$existingFileName}");
+            
+            // Delete old file if it exists
+            if ($existingFileName && file_exists(public_path('trainee-files/' . $existingFileName))) {
+                \Log::info("Deleting old file: {$existingFileName}");
+                unlink(public_path('trainee-files/' . $existingFileName));
             }
+
+            // Generate new filename
+            $filename_requested = time() . '_' . uniqid() . '.' . $fileUploaded->getClientOriginalExtension();
+            \Log::info("Generated new filename: {$filename_requested}");
+            
+            // Move uploaded file to directory
+            $fileUploaded->move(public_path('trainee-files'), $filename_requested);
+            \Log::info("File moved successfully to: {$filename_requested}");
+
+            return $filename_requested;
         }
-        $file_requested = $request->file($name);
-        $filename_requested = time() . '_' . uniqid() . '.' . $file_requested->getClientOriginalExtension();
-        $file_requested->move(public_path('trainee-files'), $filename_requested);
-        return $file_requested ? $filename_requested : null;
+        return null;
     }
 
+    public function get_all_courses_and_schools (Request $request) {
+        $courses = MainCourse::where('course_status', 'ACTIVE')->get();
+        $schools = MainSchool::where('school_status', 'ACTIVE')->get();
+        return response()->json(['courses' => $courses, 'schools' => $schools], 200);
+    }
 }

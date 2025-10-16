@@ -29,7 +29,14 @@
     }
 }
 
-.data-table-ellipsis-button i { margin-top: 4px; }
+.data-table-ellipsis-button {
+    height: 25px;
+    width: 25px;
+}
+
+.data-table-ellipsis-button i { 
+    margin-top: 5px; 
+}
 
 /* .fade-up {
     opacity: 0;

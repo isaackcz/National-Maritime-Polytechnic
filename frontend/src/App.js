@@ -7,23 +7,32 @@ import ForgotPassword from "./pages/guest/forgot-password/ForgotPassword";
 import ResetPassword from "./pages/guest/forgot-password/ResetPassword";
 import Register from "./pages/guest/registration/Register";
 import EmailVerify from "./pages/guest/email-verify/EmailVerify";
-import MyAccount from "./pages/authenticated/trainee/my-account/MyAccount";
-import Dashboard from "./pages/authenticated/trainee/dashboard/Dashboard";
-import Dormitory from "./pages/authenticated/trainee/dormitory/Dormitory";
-import Certificate from "./pages/authenticated/trainee/certificates/Certificate";
-import Courses from "./pages/authenticated/trainee/courses/Courses";
-import EnrollNewCourse from "./pages/authenticated/trainee/courses/EnrollNewCourse";
-import TraineeMenu from "./pages/authenticated/trainee/components/TraineeMenu";
-import UserManagement from "./pages/authenticated/admin/userManagement/userManagement";
-import AdminDashboard from "./pages/authenticated/admin/dashboard/dashboard";
-import AdminDormitory from "./pages/authenticated/admin/dormitory/dormitory";
-import AdminCourses from "./pages/authenticated/admin/courses/courses";
-import AdminAccount from "./pages/authenticated/admin/adminAccount/adminAccount";
-import AdminMenu from "./pages/components/admin/AdminMenu";
+
+import EnrollmentAdminMenu from "./pages/authenticated/enrollment-admin/components/EnrollmentAdminMenu";
+import EADashboard from "./pages/authenticated/enrollment-admin/dashboard/EADashboard";
+import EAPending from "./pages/authenticated/enrollment-admin/enrollment/EAPending";
+import EAEnrolled from "./pages/authenticated/enrollment-admin/enrollment/EAEnrolled";
+import EAMyAccount from "./pages/authenticated/enrollment-admin/my-account/EAMyAccount";
+import EATrainings from "./pages/authenticated/enrollment-admin/training/EATrainings";
+import EANewTraining from "./pages/authenticated/enrollment-admin/training/EANewTraining";
+import EAModules from "./pages/authenticated/enrollment-admin/training/components/EAModules";
+import EACourses from "./pages/authenticated/enrollment-admin/training/components/EACourses";
+import EATrainingFees from "./pages/authenticated/enrollment-admin/training/components/EATrainingFees";
+import EACertificate from "./pages/authenticated/enrollment-admin/training/components/EACertificate";
+import EAFinished from "./pages/authenticated/enrollment-admin/enrollment/EAFinished";
+
+//dormitory
 import DormitoryAdminMenu from "./pages/authenticated/dormitory/components/dormitoryMenu";
 import DormitoryDormitory from "./pages/authenticated/dormitory/dormitory/dormitory";
 import Request from "./pages/authenticated/dormitory/dormitory/Request";
+import DAAccount from "./pages/authenticated/dormitory/adminAccount/AdminAccount";
 
+//trainee
+import MyAccount from "./pages/authenticated/trainee/my-account/MyAccount";
+import Dormitory from "./pages/authenticated/trainee/dormitory/Dormitory";
+import TraineeMenu from "./pages/authenticated/trainee/components/TraineeMenu";
+import AdminDormitoryInvoices from "./pages/authenticated/dormitory/dormitory/InvoiceManagement";
+import Invoices from './pages/authenticated/trainee/invoices/invoices';
 
 const App = () => {
     return (
@@ -35,30 +44,42 @@ const App = () => {
                     <Route path="/register" element={<Register /> } />
                     <Route path="/forgot-password" element={<ForgotPassword /> } />
                     <Route path="/reset-password" element={<ResetPassword /> } />
-                    <Route path="/User-Profile" element={<TraineeMenu /> } />
                 </Route>
 
                 <Route element={<PrivateRoute />}>
-                    <Route element={<TraineeMenu />}>
-                        <Route path="/trainee/dashboard" element={<Dashboard /> } />
-
-                        <Route path="/trainee/course/list" element={<Courses /> } />
-                        <Route path="/trainee/course/enroll-new-course" element={<EnrollNewCourse /> } />
-
-                        <Route path="/trainee/certificate" element={<Certificate /> } />
-                        <Route path="/trainee/dormitory" element={<Dormitory /> } />
-                        <Route path="/trainee/my-account" element={<MyAccount />} />
+                    {/* admin routes */}
+                    {/* enrollment routes */}
+                    <Route element={<EnrollmentAdminMenu />}>
+                        <Route path="/enrollment-admin/dashboard" element={<EADashboard />} />
+                        <Route path="/enrollment-admin/enrollment/pending" element={<EAPending />} />
+                        <Route path="/enrollment-admin/enrollment/enrolled" element={<EAEnrolled />} />
+                        <Route path="/enrollment-admin/enrollment/finished" element={<EAFinished />} />
+                        <Route path="/enrollment-admin/training/list" element={<EATrainings />} />
+                        <Route path="/enrollment-admin/training/new" element={<EANewTraining />} />
+                        <Route path="/enrollment-admin/training/components/modules" element={<EAModules />} />
+                        <Route path="/enrollment-admin/training/components/courses" element={<EACourses />} />
+                        <Route path="/enrollment-admin/training/components/training-fees" element={<EATrainingFees />} />
+                        <Route path="/enrollment-admin/training/components/certificates" element={<EACertificate />} />
+                        <Route path="/enrollment-admin/my-account" element={<EAMyAccount />} />
                     </Route>
-
+                    {/* dormitory routes */}
                     <Route element={<DormitoryAdminMenu />}>
-                        <Route path="/dormitory/dashboard" element={<p>juu</p>} />
+                        <Route path="/dormitory/dashboard" element={<dormitoryDashboard />} />
                         <Route path="/dormitory/dormitory" element={<DormitoryDormitory />} />
                         <Route path="/dormitory/requests" element={<Request />} />
-                        <Route path="/dormitory/adminAccount" element={<p>pewpew</p>} />
+                        <Route path="/dormitory/InvoiceManagement" element={<AdminDormitoryInvoices/>} />
+                        <Route path="/dormitory/AdminAccount" element={<DAAccount/>} />
+                    </Route>
+                    {/* Trainee routes */}
+                    <Route element={<TraineeMenu />}>
+                        <Route path="/trainee/dashboard" element={<p>dashboard is working</p> } />
+                        <Route path="/trainee/course/list" element={<p>course is working</p>} />
+                        <Route path="/trainee/course/enroll-new-course" element={<p> enroll new course is working</p> } />
+                        <Route path="/trainee/dormitory" element={<Dormitory /> } />
+                        <Route path="/trainee/my-account" element={<MyAccount />} />
+                        <Route path="/trainee/invoices" element={<Invoices/>}/>
                     </Route>
                 </Route>
-
-
                 <Route path="*" element={<AccessDenied />} />
             </Routes>
         </Router>

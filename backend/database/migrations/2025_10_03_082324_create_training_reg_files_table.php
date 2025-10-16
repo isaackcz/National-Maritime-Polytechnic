@@ -17,7 +17,7 @@ return new class extends Migration
             $table->longText('file_e_signature');
             $table->longText('file_id_picture');
             $table->longText('file_srn_number');
-            $table->longText('file_last_embarkment')->nullable();
+            $table->longText('file_last_disembarkment')->nullable();
             $table->longText('file_marina_license')->nullable();
             $table->longText('file_sea_service');
             $table->timestamps();

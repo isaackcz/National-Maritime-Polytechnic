@@ -34,6 +34,8 @@ const DormitoryAdminMenu = () => {
             setActiveMenu('adminAccount');
         } else if (locationPaths.includes('dormitory/dashboard')) {
             setActiveMenu('dashboard');
+        } else if (locationPaths.includes('dormitory/InvoiceManagement')) {
+            setActiveMenu('dashboard');
         } else {
             setActiveMenu('dashboard');
         }
@@ -159,6 +161,12 @@ const DormitoryAdminMenu = () => {
                                             <Link to="/dormitory/requests" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('dormitory/requests') ? 'active' : ''}`}>
                                                 <span className="nav-icon material-icons-outlined">inbox</span>
                                                 <p>Requests</p>
+                                            </Link>
+                                        </li>
+                                        <li className="nav-item">
+                                            <Link to="/dormitory/InvoiceManagement" className={`nav-link py-1 d-flex align-items-center ${locationPaths.includes('dormitory/InvoiceManagement') ? 'active' : ''}`}>
+                                                <span className="nav-icon material-icons-outlined">inbox</span>
+                                                <p>Invoice</p>
                                             </Link>
                                         </li>
                                     </ul>

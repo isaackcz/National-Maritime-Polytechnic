@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Guest;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use App\Models\DormitoryRoom;
 use App\Models\AuditTrail;
 
@@ -13,7 +14,8 @@ class LoginController extends Controller
     public function login_user(Request $request) {
         $validation = [
             'email' => 'required|string|email',
-            'password' => 'required|string'
+            'password' => 'required|string',
+            // 'google_captcha' => 'required' // Disabled for easy login
         ];
 
         $validator = \Validator::make($request->all(), $validation);
@@ -22,6 +24,7 @@ class LoginController extends Controller
             return response()->json(['message' => $validator->messages()], 422);
         } else {
             try {
+                // CAPTCHA verification removed for easy login
                 if(Auth::attempt($request->only('email', 'password'))){
                     $user = Auth::user();
 

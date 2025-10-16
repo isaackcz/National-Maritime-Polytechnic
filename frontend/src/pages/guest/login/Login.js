@@ -12,6 +12,9 @@ import useSystemURLCon from '../../../hooks/useSystemURLCon';
 import useShowToaster from '../../../hooks/useShowToaster';
 import DpoDpsModal from './DpoDpsModal';
 import useGetToken from '../../../hooks/useGetToken';
+// import FacebookBtn from '../../components/SocialLoginButtons/FacebookBtn';
+// import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+// import GoogleBtn from '../../components/SocialLoginButtons/GoogleBtn';
 
 const Login = () => {
     const { setOpenToast, Toast, setToastMessage, setToastStatus } = useShowToaster();
@@ -22,7 +25,7 @@ const Login = () => {
     const [password, setPassword] = useState("");
     const { setToken } = useGetToken();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { EndAdornment, visible, inputType } = useToggleShowHidePass();
+    const { EndAdornment, inputType } = useToggleShowHidePass();
 
     const LoginUser = async (e) => {
         e.preventDefault();
@@ -46,7 +49,7 @@ const Login = () => {
                     }
                 }
             });
-
+            
             if (response.status === 200) {
                 setToken('csrf-token', response.data.token);
                 switch (response.data.role) {
@@ -57,7 +60,7 @@ const Login = () => {
                         navigate("/dormitory/dashboard");
                         break;
                     case 'ADMIN-ENROLLMENT':
-                        navigate("/enrollment/dashboard");
+                        navigate("/enrollment-admin/dashboard");
                         break;
                     case 'TRAINER':
                         navigate("/trainer/dashboard");
@@ -70,7 +73,8 @@ const Login = () => {
         } catch(error) {
             setOpenToast(true);
             setToastStatus('error');
-            setToastMessage(error?.response?.data?.message || 'Login failed. Please check your credentials.');
+            // Fixed: Check if error.response exists before accessing data
+            setToastMessage(error.response?.data?.message || error.message || 'Login failed');
         } finally {
             setPassword('');
             setIsSubmitting(false);
@@ -91,7 +95,7 @@ const Login = () => {
                             <div className="card rounded-0 text-dark shadow fade-up">
                                 <div className="card-body py-0 text--fontPos13--xW8hS">
                                     <div className='row'>
-                                        <div className='col-xl-6'>
+                                        <div className='col-xl-6 right-img-login'>
                                             <img src='/system-images/guest-left-img.png' className='img-fluid' />
                                         </div>
 
@@ -129,9 +133,6 @@ const Login = () => {
                                                     />
                                                 </FormControl>
 
-                                                <div className='alert alert-default border mt-3'>
-                                                    RECAPTCHA CONTAINER
-                                                </div>
 
                                                 <div className="row mt-3">
                                                     <div className="col-xl-7 mb-2">
@@ -152,25 +153,23 @@ const Login = () => {
                                                         </Link>
                                                     </div>
 
-                                                    <div className='col-xl-12 mt-2 text-center'>
+                                                    {/* Social login disabled for simple login */}
+                                                    {/* <div className='col-xl-12 mt-2 text-center'>
                                                         <Divider>or</Divider>
-                                                    </div>
-                                                </div>
-
-                                                <div className="row mt-2">
-                                                    <div className="col-xl-6 mb-2">
-                                                        <button className="text--fontPos13--xW8hS btn btn-default btn-block">
-                                                            <i className='fab fa-google text-danger mr-2'></i> Sign in with Google
-                                                        </button>
-                                                    </div>
-
-                                                    <div className="col-xl-6 mb-2">
-                                                        <button className="text--fontPos13--xW8hS btn btn-default btn-block">
-                                                            <i className='fab fa-facebook text-primary mr-2'></i> Login with Facebook
-                                                        </button>
-                                                    </div>
+                                                    </div> */}
                                                 </div>
                                             </form>
+
+                                            {/* Social login buttons disabled */}
+                                            {/* <div className="row mt-2">
+                                                <div className="col-xl-6 mb-1">
+                                                    <GoogleBtn />
+                                                </div>
+
+                                                <div className="col-xl-6 mb-1">
+                                                    <FacebookBtn textShown="Login with" />
+                                                </div>
+                                            </div> */}
                                         </div>
                                     </div>
                                 </div>

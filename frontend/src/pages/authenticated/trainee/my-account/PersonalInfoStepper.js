@@ -1,11 +1,20 @@
-import { useState } from 'react';
-import { Stepper, Step, StepLabel, Box, Button, TextField, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Paper, Typography, Divider, Grid } from '@mui/material';
+import { useEffect, useState } from 'react';
+import {InputLabel, Select, Stepper, Step, StepLabel, StepButton, Box, Button, TextField, MenuItem, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Paper, Typography, Divider, Grid } from '@mui/material';
 import { MuiTelInput } from 'mui-tel-input';
 import '../components/stepperCustom.css';
 import PhilippinesAddressDropdown from './PhilippinesAddressDropdown';
 import DragDropFileInput from '../components/DragDropFileInput';
 import { textFieldProps, dateFieldProps, menuItemProps, phoneInputWrapperProps, radioProps, radioLabelProps, radioGroupLabelProps, formLabelProps, sectionTitleProps } from '../components/inputStyles';
 import { validateStep } from './formValidation';
+import axios from 'axios';
+import useSystemURLCon from '../../../../hooks/useSystemURLCon';
+import useGetToken from '../../../../hooks/useGetToken';
+import { DemoContainer } from '@mui/x-date-pickers/internals/demo';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+
+
 
 const steps = ['Basic Info', 'Contact Info', 'Contact Person', 'Education', 'Shipboard Exp.', 'Documents'];
 
@@ -32,81 +41,107 @@ const InfoCard = ({ children, elevation = 0 }) => (
     </Paper>
 );
 
+const courses = [];
+const schools = [];
+const years = [];
 const PersonalInfoStepper = ({ logic, onSubmit }) => {
     const [activeStep, setActiveStep] = useState(0);
-    const [errors, setErrors] = useState({}); 
-    const [touched, setTouched] = useState({});
-    
-
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({}); 
+    const { getToken } = useGetToken();
+    const { url } = useSystemURLCon();
+    const [yearGraduated, setYearGraduated] = useState(''); 
     const handleFormSubmit = (e) => {
-        e.preventDefault();
-        
+        e.preventDefault(); 
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         if (activeStep !== steps.length - 1) {
-            console.log(`⚠️ Blocked form submission - Currently on step ${activeStep + 1}, not on final step`);
-            return;
+            console.log(`Blocked form submission - Currently on step ${activeStep + 1}, not on final step`);
+            return; 
         }
         
         const stepErrors = validateStep(activeStep, logic);
         
         if (Object.keys(stepErrors).length > 0) {
             setErrors(stepErrors);
-            console.log("❌ Form has validation errors - submission blocked");
             return;
         }
-        
-        console.log("✅ Form validation passed - proceeding with submission");
+        setErrors({});
+        setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
+        console.log("Form validation passed - proceeding with submission");
         logic.SubmitFormPersonal(e);
     };
-
 
     const handleNext = () => {
         // Validate current step
         const stepErrors = validateStep(activeStep, logic);
         
-        
+        // If there are errors, show them and prevent navigation
         if (Object.keys(stepErrors).length > 0) {
             setErrors(stepErrors);
+            console.log("qwerty: ", stepErrors);
+            // No alert - user sees red borders and error messages on fields
             return;
         }
         
+        // Clear errors and proceed to next step
         setErrors({});
         setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
     };
-
 
     const handleBack = () => {
         setErrors({});
         setActiveStep((prev) => Math.max(prev - 1, 0));
     };
 
-
     const handleFieldTouch = (fieldName) => {
         setTouched(prev => ({ ...prev, [fieldName]: true }));
     };
 
-
-    const clearErrorIfValid = (fieldName, value, logicOverrides) => {
-        
-        if (!errors[fieldName]) return;
-
-        
-        let logicDraft = { ...logic };
-        if (value !== undefined) {
-            logicDraft = { ...logicDraft, [fieldName]: value };
-        }
-        if (logicOverrides && typeof logicOverrides === 'object') {
-            logicDraft = { ...logicDraft, ...logicOverrides };
-        }
-        
-        const stepErrors = validateStep(activeStep, logicDraft);
-        
-        if (!stepErrors[fieldName]) {
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors[fieldName];
-                return newErrors;
+    const Educational_attainment = async () => {
+        try {
+            const token = getToken("csrf-token");
+            const response = await axios.get(`${url}/my-account/get_all_courses_and_schools`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json'
+                }
             });
+            if (response.status === 200) {
+                courses.push(...response.data.courses);
+                schools.push(...response.data.schools);
+                // setCourses(response.data.courses);
+                // setSchools(response.data.schools);
+            }
+        } catch (error) {
+            console.error("Error fetching educational attainment:", error);
         }
+    };
+    
+    useEffect(() => {
+        Educational_attainment();
+
+        for (let index = new Date().getFullYear(); index > 2010; index--) {
+            years.push(index);
+        }
+    }, []);
+
+
+    const clearErrorIfValid = (fieldName) => {
+    setTimeout(() => {
+        const stepErrors = validateStep(activeStep, logic);
+        
+        if (!stepErrors[fieldName] && errors[fieldName]) {
+        setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[fieldName];
+            return newErrors;
+        });
+        }
+    }, 100);
     };
 
     const renderStepContent = (step) => {
@@ -134,6 +169,7 @@ const PersonalInfoStepper = ({ logic, onSubmit }) => {
                 <Stepper 
                     activeStep={activeStep} 
                     alternativeLabel 
+                    nonLinear
                     sx={{ 
                         mb: { xs: 2, md: 3 },
                         '& .MuiStepLabel-label': {
@@ -144,9 +180,11 @@ const PersonalInfoStepper = ({ logic, onSubmit }) => {
                         }
                     }}
                 >
-                    {steps.map((label) => (
+                    {steps.map((label, index) => (
                         <Step key={label}>
-                            <StepLabel>{label}</StepLabel>
+                            <StepButton onClick={() => setActiveStep(index)}>
+                                {label}
+                            </StepButton>
                         </Step>
                     ))}
                 </Stepper>
@@ -222,7 +260,11 @@ const PersonalInfoStepper = ({ logic, onSubmit }) => {
                     <Button 
                         type="button"
                         variant="contained" 
-                        onClick={handleNext}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleNext();
+                        }}
                         size="medium"
                         endIcon={<i className="fas fa-arrow-right" style={{ fontSize: '12px' }}></i>}
                         sx={{ 
@@ -252,10 +294,12 @@ const PersonalInfoStepper = ({ logic, onSubmit }) => {
 
 // Step 1: Basic Information
 const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
+    
     <Box>
         <SectionHeader icon="fas fa-user-circle" title="Personal Information" subtitle="Provide your basic personal details" />
         
         <InfoCard>
+            {/* Name Fields - Auto-fit with minimum 150px */}
             <Box sx={{ 
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
@@ -306,6 +350,7 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                 />
             </Box>
 
+            {/* Email and SRN - 2 columns */}
             <Box sx={{ 
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -330,6 +375,7 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     label="SRN Number" 
                     value={logic.srn} 
                     onChange={(e) => {
+                        // Only allow numbers - backend expects integer
                         const value = e.target.value.replace(/[^0-9]/g, '');
                         logic.setsrn(value);
                         clearErrorIfValid('srn', value);
@@ -342,7 +388,7 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     {...textFieldProps}
                     inputProps={{ 
                         inputMode: 'numeric',
-                        pattern: '[0-9]*'
+                        pattern: '[0-10]*'
                     }}
                     InputProps={{
                         startAdornment: <i className="fas fa-id-badge mr-2 text-muted" style={{ fontSize: '12px' }}></i>
@@ -354,6 +400,7 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
         <SectionHeader icon="fas fa-id-card" title="Demographics" subtitle="Date of birth and identification details" />
         
         <InfoCard>
+            {/* User Type, Sex, birthdate - 3 columns auto-fit */}
             <Box sx={{ 
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -403,15 +450,15 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     <MenuItem value="FEMALE" {...menuItemProps}>Female</MenuItem>
                 </TextField>
                 <TextField 
-                    label="Birthday" 
-                    value={logic.birthday} 
+                    label="birthdate" 
+                    value={logic.birthdate} 
                     onChange={(e) => {
-                        logic.setBirthday(e.target.value);
-                        clearErrorIfValid('birthday', e.target.value);
+                        logic.setBirthdate(e.target.value);
+                        clearErrorIfValid('birthdate', e.target.value);
                     }} 
-                    onBlur={() => onFieldTouch('birthday')}
-                    error={!!errors.birthday}
-                    helperText={errors.birthday}
+                    onBlur={() => onFieldTouch('birthdate')}
+                    error={!!errors.birthdate}
+                    helperText={errors.birthdate}
                     required
                     fullWidth 
                     {...dateFieldProps}
@@ -421,6 +468,7 @@ const BasicInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                 />
             </Box>
             
+            {/* Civil Status and Nationality - 2 columns */}
             <Box sx={{ 
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -501,6 +549,7 @@ const ContactInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => 
         <SectionHeader icon="fas fa-phone-alt" title="Contact Numbers" subtitle="How can we reach you?" />
         
         <InfoCard>
+            {/* Mobile Numbers - 2 columns */}
             <Box sx={{ 
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -606,11 +655,10 @@ const ContactInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => 
                 setAddressData={logic.setAddressData}
                 errors={errors}
                 onFieldTouch={onFieldTouch} 
-                clearErrorIfValid={clearErrorIfValid}
             />
         </InfoCard>
 
-        <SectionHeader icon="fas fa-birthday-cake" title="Birthplace" subtitle="Where were you born?" />
+        <SectionHeader icon="fas fa-birthdate-cake" title="Birthplace" subtitle="Where were you born?" />
         
         <InfoCard>
             {(errors.birthplaceRegion || errors.birthplaceProvince || errors.birthplaceMunicipality || errors.birthplaceBarangay) && (
@@ -628,7 +676,6 @@ const ContactInfoStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => 
                 errors={errors}
                 onFieldTouch={onFieldTouch}
                 fieldPrefix="birthplace"
-                clearErrorIfValid={clearErrorIfValid}
             />
         </InfoCard>
     </Box>
@@ -789,54 +836,75 @@ const EducationStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                 gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                 gap: 2 
             }}>
-                <TextField 
-                    label="Course Taken" 
-                    value={logic.CourseTaken} 
-                    onChange={(e) => {
-                        logic.setCourseTaken(e.target.value);
-                        clearErrorIfValid('CourseTaken', e.target.value);
-                    }}
-                    onBlur={() => onFieldTouch('CourseTaken')}
-                    error={!!errors.CourseTaken}
-                    helperText={errors.CourseTaken} 
-                    required 
-                    fullWidth 
-                    {...textFieldProps} 
-                    InputProps={{ startAdornment: <i className="fas fa-book mr-2 text-muted" style={{ fontSize: '12px' }}></i> }} 
-                    placeholder="e.g., BS Marine Transportation" 
-                />
-                <TextField 
-                    label="School Name" 
-                    value={logic.SchoolName} 
-                    onChange={(e) => {
-                        logic.setSchoolName(e.target.value);
-                        clearErrorIfValid('SchoolName', e.target.value);
-                    }}
-                    onBlur={() => onFieldTouch('SchoolName')}
-                    error={!!errors.SchoolName}
-                    helperText={errors.SchoolName} 
-                    required 
-                    fullWidth 
-                    {...textFieldProps} 
-                    InputProps={{ startAdornment: <i className="fas fa-university mr-2 text-muted" style={{ fontSize: '12px' }}></i> }} 
-                    placeholder="e.g., Philippine Merchant Marine Academy" 
-                />
-                <TextField 
-                    label="School Address" 
-                    value={logic.SchoolAddress} 
-                    onChange={(e) => {
-                        logic.setSchoolAddress(e.target.value);
-                        clearErrorIfValid('SchoolAddress', e.target.value);
-                    }}
-                    onBlur={() => onFieldTouch('SchoolAddress')}
-                    error={!!errors.SchoolAddress}
-                    helperText={errors.SchoolAddress} 
-                    required 
-                    fullWidth 
-                    {...textFieldProps} 
-                    InputProps={{ startAdornment: <i className="fas fa-map-marker-alt mr-2 text-muted" style={{ fontSize: '12px' }}></i> }} 
-                    placeholder="Complete school address" 
-                />
+            <TextField
+            select
+            label="School Attended"
+            value={logic.SchoolName}
+            onChange={(e) => {
+                logic.setSchoolName(e.target.value);
+                clearErrorIfValid('SchoolName', e.target.value);
+            }}
+            onBlur={() => onFieldTouch('SchoolName')}
+            error={!!errors.SchoolName}
+            helperText={errors.SchoolName ? errors.SchoolName : ''}
+            required
+            fullWidth
+            >
+            {schools.map((school) => (
+                <MenuItem key={school.id} value={school.id}>
+                <Box display="flex" flexDirection="column">
+                    <Typography variant="body1">{school.school_name}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                    {school.school_address}
+                    </Typography>
+                </Box>
+                </MenuItem>
+            ))}
+            </TextField>
+
+            <TextField
+                select
+                label="Course Taken"
+                value={logic.CourseTaken}
+                onChange={(e) => {
+                    logic.setCourseTaken(e.target.value);
+                    clearErrorIfValid('CourseTaken', e.target.value);
+                }}
+                onBlur={() => onFieldTouch('CourseTaken')}
+                error={!!errors.CourseTaken}
+                helperText={errors.CourseTaken ? errors.CourseTaken : ''}
+                required
+                fullWidth
+            >
+                {courses.map((course) => (
+                    <MenuItem key={course.id} value={course.id}>
+                        {course.course_name}
+                    </MenuItem>
+                ))}
+                
+            </TextField>
+
+            <TextField
+                select
+                label="Year Graduated"
+                value={logic.YearGraduated}
+                onChange={(e) => {
+                    logic.setYearGraduated(e.target.value);
+                    clearErrorIfValid('YearGraduated', e.target.value);
+                }}
+                onBlur={() => onFieldTouch('YearGraduated')}
+                error={!!errors.YearGraduated}
+                helperText={errors.YearGraduated ? errors.YearGraduated : ''}
+                required
+                fullWidth
+            >
+                {years.map((year) => (
+                    <MenuItem key={year} value={year}>
+                        {year}
+                    </MenuItem>
+                ))}
+                
+            </TextField>
             </Box>
         </InfoCard>
     </Box>
@@ -865,6 +933,7 @@ const ShipboardStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                 <SectionHeader icon="fas fa-certificate" title="Latest Shipboard Details" subtitle="Provide information about your most recent maritime experience" />
                 
                 <InfoCard>
+                    {/* License, Rank, Disembarkation - flexible 2-3 columns */}
                     <Box sx={{ 
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -920,6 +989,7 @@ const ShipboardStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                         />
                     </Box>
 
+                    {/* Shipping Principal and Manning Company - 2 columns */}
                     <Box sx={{ 
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -958,6 +1028,7 @@ const ShipboardStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                         />
                     </Box>
 
+                    {/* Optional Fields - 2 columns */}
                     <Box sx={{ 
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -975,8 +1046,9 @@ const ShipboardStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                             label="Mobile Number (Optional)" 
                             value={logic.LSEMobileNumber} 
                             onChange={(value, info) => {
+                                // Limit to 11 digits for PH numbers
                                 const digits = value.replace(/\D/g, '');
-                                if (digits.length <= 12) {
+                                if (digits.length <= 12) { // +63 (2 digits) + 11 digits = 13 - 1 = 12
                                     logic.setLSEMobileNumber(value);
                                 }
                             }}
@@ -1012,20 +1084,23 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                 gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                 gap: 2
             }}>
-                <DragDropFileInput 
-                    label="Signature *" 
+                <DragDropFileInput
+                    label="Signature *"
+                    value={logic.signatureFile}
                     onChange={(e) => {
                         logic.CheckUploadedAvatar(e, 'signature');
                         onFieldTouch('signatureFile');
-                        const file = e.target ? e.target.files?.[0] : e.files?.[0];
-                        clearErrorIfValid('signatureFile', file, { signatureFile: file });
+                        clearErrorIfValid('signatureFile');
                     }} 
                     accept="image/*"
                     fileName={logic.signatureFileName}
                     error={errors.signatureFile}
+                    filePreviewUrl={logic.signatureFileUrl}
+                    required
                 />
                 <DragDropFileInput 
                     label="1.5x1.5 ID Picture *" 
+                    value={logic.IDPicture}
                     onChange={(e) => {
                         logic.CheckUploadedAvatar(e, 'idPicture');
                         onFieldTouch('IDPicture');
@@ -1035,9 +1110,11 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     accept="image/*"
                     fileName={logic.IDPictureFileName}
                     error={errors.IDPicture}
+                    filePreviewUrl={logic.IDPictureFileUrl}
                 />
                 <DragDropFileInput 
-                    label="SRN Screenshot *" 
+                    label="SRN Screenshot *"
+                    value={logic.SRNFile}
                     onChange={(e) => {
                         logic.CheckUploadedAvatar(e, 'srnNumber');
                         onFieldTouch('SRNFile');
@@ -1047,9 +1124,11 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     accept="image/*"
                     fileName={logic.SRNFileName}
                     error={errors.SRNFile}
+                    filePreviewUrl={logic.SRNFileUrl}
                 />
                 <DragDropFileInput 
-                    label="Sea Service Book *" 
+                    label="Sea Service Book *"
+                    value={logic.seamansBook}
                     onChange={(e) => {
                         logic.CheckUploadedAvatar(e, 'seaService');
                         onFieldTouch('seamansBook');
@@ -1058,6 +1137,7 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     }}
                     fileName={logic.seamansBookFileName}
                     error={errors.seamansBook}
+                    filePreviewUrl={logic.seamansBookFileUrl}
                 />
             </Box>
         </InfoCard>
@@ -1070,19 +1150,22 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                 gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                 gap: 2
             }}>
-                <DragDropFileInput 
-                    label="Last Disembarkation *" 
+                <DragDropFileInput
+                    label={`Last Disembarkation ${logic.shipboardExperience === 'With Shipboard Experience' ? '*' : '(Optional)'}`}
+                    value={logic.lastDisembarkation}
                     onChange={(e) => {
-                        logic.CheckUploadedAvatar(e, 'lastEmbarkment');
+                        logic.CheckUploadedAvatar(e, 'lastDisembarkation');
                         onFieldTouch('lastDisembarkation');
                         const file = e.target ? e.target.files?.[0] : e.files?.[0];
-                        clearErrorIfValid('lastDisembarkation', file, { LastDisembarkation: file });
+                        clearErrorIfValid('lastDisembarkation', file, { lastDisembarkation: file });
                     }}
                     fileName={logic.lastDisembarkationFileName}
                     error={errors.lastDisembarkation}
+                    filePreviewUrl={logic.lastDisembarkationFileUrl}
                 />
                 <DragDropFileInput 
-                    label="Marina License *" 
+                    value={logic.marinaLicense}
+                    label={`Marina License ${logic.shipboardExperience === 'With Shipboard Experience' ? '*' : '(Optional)'}`} 
                     onChange={(e) => {
                         logic.CheckUploadedAvatar(e, 'marinaLicense');
                         onFieldTouch('licenseFile');
@@ -1091,6 +1174,7 @@ const DocumentsStep = ({ logic, errors, onFieldTouch, clearErrorIfValid }) => (
                     }}
                     fileName={logic.licenseFileName}
                     error={errors.licenseFile}
+                    filePreviewUrl={logic.licenseFileUrl}
                 />
             </Box>
         </InfoCard>

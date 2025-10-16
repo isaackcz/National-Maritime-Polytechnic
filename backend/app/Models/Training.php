@@ -13,10 +13,6 @@ class Training extends Model
         return $this->hasMany(EnrolledCourse::class);
     }
 
-    public function course() {
-        return $this->hasOne(MainCourse::class, 'id', 'main_course_id');
-    }
-
     public function module() {
         return $this->hasOne(CourseModule::class, 'id', 'course_module_id');
     }

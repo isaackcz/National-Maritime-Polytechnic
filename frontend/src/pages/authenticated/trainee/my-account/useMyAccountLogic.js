@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import useGetCurrentUser from '../../../../hooks/useGetCurrentUser';
@@ -8,6 +8,8 @@ import useShowSubmitLoader from '../../../../hooks/useShowSubmitLoader';
 import useShowToaster from '../../../../hooks/useShowToaster';
 import useDateFormat from '../../../../hooks/useDateFormat';
 import useToggleShowHidePass from '../../../../hooks/useToggleShowHidePass';
+import { set } from 'date-fns';
+
 
 /**
   * @returns {Object} 
@@ -21,6 +23,9 @@ const useMyAccountLogic = () => {
     const { userData, refreshUser } = useGetCurrentUser();
     const { formatDateToReadable } = useDateFormat(); 
     const { EndAdornment, inputType } = useToggleShowHidePass();
+    const [courses, setCourses] = useState([]);
+    const [schools, setSchools] = useState([]);
+
 
     // Personal Information States
     const [srn, setsrn] = useState('');
@@ -38,7 +43,7 @@ const useMyAccountLogic = () => {
     const [nationality, setNationality] = useState('Filipino');
     const [nationalityOther, setNationalityOther] = useState('');
     const [civilStatus, setCivilStatus] = useState('');
-    const [birthday, setBirthday] = useState('');
+    const [birthdate, setBirthdate] = useState('');
     const [birthplaceAddress, setBirthplaceAddress] = useState({
         region: '',
         province: '',
@@ -69,6 +74,7 @@ const useMyAccountLogic = () => {
     const [CourseTaken, setCourseTaken] = useState('');
     const [SchoolName, setSchoolName] = useState('');
     const [SchoolAddress, setSchoolAddress] = useState('');
+    const [YearGraduated, setYearGraduated] = useState('');
     
     // Shipboard Experience
     const [shipboardExperience, setShipboardExperience] = useState('With Shipboard Experience');
@@ -106,6 +112,14 @@ const useMyAccountLogic = () => {
     const [lastDisembarkationFileName, setLastDisembarkationFileName] = useState('');
     const [licenseFileName, setLicenseFileName] = useState('');
 
+    // File Preview URLs for existing files
+    const [signatureFileUrl, setSignatureFileUrl] = useState('');
+    const [IDPictureFileUrl, setIDPictureFileUrl] = useState('');
+    const [SRNFileUrl, setSRNFileUrl] = useState('');
+    const [seamansBookFileUrl, setSeamansBookFileUrl] = useState('');
+    const [lastDisembarkationFileUrl, setLastDisembarkationFileUrl] = useState('');
+    const [licenseFileUrl, setLicenseFileUrl] = useState('');
+
     // Password States
     const [currentPassword, setCurrentPassword] = useState('');
     const [password, setPassword] = useState('');
@@ -120,7 +134,7 @@ const useMyAccountLogic = () => {
     // Activities
     const [activities, setActivities] = useState([]);
 
-    
+ 
     const fetchPersonalInformation = async () => {
         try {
             const token = getToken("csrf-token");
@@ -142,108 +156,173 @@ const useMyAccountLogic = () => {
                 setLastName(data.lname || '');
                 setSuffix(data.suffix || '');
                 setEmail(data.email || '');
-                setSex(data.sex ? data.sex.toUpperCase() : '');
-
+                setBirthdate(data.birthdate || '');
+                setSex(data.additional_trainee_info.general_info.gen_info_gender);
                 // STEP 2: Check if there's additional trainee information
-                if(data.additional_trainee_info) {
+                if (data.additional_trainee_info) {
                     const additionalInfo = data.additional_trainee_info;
 
-                    // STEP 3: Fill general information (SRN, nationality, civil status, etc.)
-                    if(additionalInfo.general_info) {
-                        const genInfo = additionalInfo.general_info;
-                        
-                        setsrn(genInfo.gen_info_srn || '');
-                        setUserType(genInfo.gen_info_status || 'NEW');
-                        setBirthday(genInfo.gen_info_birthdate || '');
-                        setCivilStatus(genInfo.gen_info_civil_status || '');
-                        
-                        // Handle nationality
-                        setNationality(genInfo.gen_info_citizenship || 'FILIPINO');
-                        if(genInfo.gen_info_citizenship && genInfo.gen_info_citizenship !== 'FILIPINO') {
-                            setNationalityOther(genInfo.gen_info_citizenship);
-                            setNationality('Others');
-                        }
-                        
-                        // Fill contact numbers
-                        setMobileNumber1(genInfo.gen_info_number_one || '');
-                        setMobileNumber2(genInfo.gen_info_number_two || '');
-                        setLandline(genInfo.gen_info_landline || '');
-                        setFacebookAccount(genInfo.gen_info_facebook || '');
-                        
-                        // STEP 4: Fill current address information
-                        setAddressData({
-                            region: genInfo.gen_info_region || '',
-                            province: genInfo.gen_info_province || '',
-                            municipality: genInfo.gen_info_municipality || '',
-                            barangay: genInfo.gen_info_barangay || '',
-                            houseNo: genInfo.gen_info_house_no || '',
-                            postalCode: genInfo.gen_info_postal || '',
-                        });
+                // STEP 3: Fill general information (SRN, nationality, civil status, etc.)
+                if (additionalInfo.general_info) {
+                    const genInfo = additionalInfo.general_info;
 
-                        // STEP 5: Fill birthplace address information
-                        setBirthplaceAddress({
-                            region: genInfo.gen_info_birthplace_region || '',
-                            province: genInfo.gen_info_birthplace_province || '',
-                            municipality: genInfo.gen_info_birthplace_municipality || '',
-                            barangay: genInfo.gen_info_birthplace_barangay || '',
-                            houseNo: '',
-                            postalCode: '',
-                        });
+                    setsrn(genInfo.gen_info_srn || '');
+                    setUserType(genInfo.gen_info_status || 'NEW');
+                    setCivilStatus(genInfo.gen_info_civil_status || '');
+
+                    // Handle nationality
+                    setNationality(genInfo.gen_info_citizenship || 'FILIPINO');
+                    if (genInfo.gen_info_citizenship && genInfo.gen_info_citizenship !== 'FILIPINO') {
+                        setNationalityOther(genInfo.gen_info_citizenship);
+                        setNationality('Others');
                     }
 
-                    // STEP 6: Fill contact person information
-                    if(additionalInfo.contact_person) {
-                        const contact = additionalInfo.contact_person;
-                        setCPname(contact.person_name || '');
-                        setCPrelationship(contact.person_relationship || '');
-                        setCPaddress(contact.person_address || '');
-                        setCPtelephoneNumber(contact.person_landline || '');
-                        setCPmobileNumber1(contact.person_number_one || '');
-                        setCPmobileNumber2(contact.person_number_two || '');
-                        setCPemail(contact.person_email || '');
-                    }
+                    // Fill contact numbers
+                    setMobileNumber1(genInfo.gen_info_number_one || '');
+                    setMobileNumber2(genInfo.gen_info_number_two || '');
+                    setLandline(genInfo.gen_info_landline || '');
+                    setFacebookAccount(genInfo.gen_info_facebook || '');
 
-                    // STEP 7: Fill educational information
-                    if(additionalInfo.educational_attainment) {
-                        const education = additionalInfo.educational_attainment;
-                        setCourseTaken(education.school_course_taken || '');
-                        setSchoolAddress(education.school_address || '');
-                        setSchoolName(education.school_graduated || '');
-                    }
+                    // STEP 4: Fill current address information
+                    setAddressData({
+                        region: genInfo.gen_info_region || '',
+                        province: genInfo.gen_info_province || '',
+                        municipality: genInfo.gen_info_municipality || '',
+                        barangay: genInfo.gen_info_barangay || '',
+                        houseNo: genInfo.gen_info_house_no || '',
+                        postalCode: genInfo.gen_info_postal || '',
+                    });
 
-                    // STEP 8: Fill shipboard experience information
-                    if(additionalInfo.latest_shipboard_attainment) {
-                        const shipboard = additionalInfo.latest_shipboard_attainment;
-                        setShipboardExperience(shipboard.ship_status || 'With Shipboard Experience');
-                        setLicense(shipboard.ship_license || '');
-                        setRank(shipboard.ship_rank || '');
-                        setDisembarkation(shipboard.ship_date_of_disembarkment || '');
-                        setShippingPrincipal(shipboard.ship_principal || '');
-                        setManningCompany(shipboard.ship_manning || '');
-                        setLandlineNumber(shipboard.ship_landline || '');
-                        setLSEMobileNumber(shipboard.ship_number || '');
-                    }
+                    // STEP 5: Fill birthplace address information
+                    setBirthplaceAddress({
+                        region: genInfo.gen_info_birthplace_region || '',
+                        province: genInfo.gen_info_birthplace_province || '',
+                        municipality: genInfo.gen_info_birthplace_municipality || '',
+                        barangay: genInfo.gen_info_birthplace_barangay || '',
+                        houseNo: '',
+                        postalCode: '',
+                    });
                 }
+
+                // STEP 6: Fill contact person information
+                if (additionalInfo.contact) {
+                    const contact = additionalInfo.contact;
+                    setCPname(contact.person_name || '');
+                    setCPrelationship(contact.person_relationship || '');
+                    setCPaddress(contact.person_address || '');
+                    setCPtelephoneNumber(contact.person_landline || '');
+                    setCPmobileNumber1(contact.person_number_one || '');
+                    setCPmobileNumber2(contact.person_number_two || '');
+                    setCPemail(contact.person_email || '');
+                }
+
+                // STEP 7: Fill educational information
+                if (additionalInfo.educational_attainment) {
+                    const education = additionalInfo.educational_attainment;
+                    setCourseTaken(education.main_course_id || '');
+                    setYearGraduated(education.school_graduated || '');
+                    setSchoolName(education.main_school_id || '');
+                }
+
+                // STEP 8: Fill shipboard experience information
+                if (additionalInfo.latest_shipboard_attainment) {
+                    const shipboard = additionalInfo.latest_shipboard_attainment;
+                    setShipboardExperience(shipboard.ship_status || 'With Shipboard Experience');
+                    setLicense(shipboard.ship_license || '');
+                    setRank(shipboard.ship_rank || '');
+                    setDisembarkation(shipboard.ship_date_of_disembarkment || '');
+                    setShippingPrincipal(shipboard.ship_principal || '');
+                    setManningCompany(shipboard.ship_manning || '');
+                    setLandlineNumber(shipboard.ship_landline || '');
+                    setLSEMobileNumber(shipboard.ship_number || '');
+                }
+                if (additionalInfo.trainee_registration_file){
+                const file = additionalInfo.trainee_registration_file;
+                console.log("files: ", additionalInfo.trainee_registration_file);
+                
+                // Set file names
+                console.log("Setting file names from API data:", {
+                    signature: file.file_e_signature,
+                    idPicture: file.file_id_picture,
+                    srn: file.file_srn_number,
+                    seamansBook: file.file_sea_service,
+                    lastDisembarkation: file.file_last_disembarkment,
+                    license: file.file_marina_license
+                });
+                
+                setSignatureFileName(file.file_e_signature || '');
+                setIDPictureFileName(file.file_id_picture || '');
+                setSRNFileName(file.file_srn_number || '');
+                setSeamansBookFileName(file.file_sea_service || '');
+                setLastDisembarkationFileName(file.file_last_disembarkment || '');
+                setLicenseFileName(file.file_marina_license || '');
+                
+                // Set file preview URLs for existing files
+                // Construct the correct base URL for file access
+                const baseUrl = url.replace('/api', ''); // Remove /api from backend URL to get base URL
+                setSignatureFileUrl(file.file_e_signature ? `${baseUrl}/trainee-files/${file.file_e_signature}` : '');
+                setIDPictureFileUrl(file.file_id_picture ? `${baseUrl}/trainee-files/${file.file_id_picture}` : '');
+                setSRNFileUrl(file.file_srn_number ? `${baseUrl}/trainee-files/${file.file_srn_number}` : '');
+                setSeamansBookFileUrl(file.file_sea_service ? `${baseUrl}/trainee-files/${file.file_sea_service}` : '');
+                setLastDisembarkationFileUrl(file.file_last_disembarkment ? `${baseUrl}/trainee-files/${file.file_last_disembarkment}` : '');
+                setLicenseFileUrl(file.file_marina_license ? `${baseUrl}/trainee-files/${file.file_marina_license}` : '');
+
+                // Debug: Log the loaded file data
+                console.log("Loaded file data from API:", {
+                    signature: file.file_e_signature,
+                    idPicture: file.file_id_picture,
+                    srn: file.file_srn_number,
+                    seamansBook: file.file_sea_service,
+                    lastDisembarkation: file.file_last_disembarkment,
+                    license: file.file_marina_license
+                });
+
+            }
+            }
             }
         } catch (error) {
+            // Handle errors
             console.error("Error fetching personal information:", error);
-            
+            // If server error, logout user
             if(error.response?.status === 500) {
                 alert('Session expired. Please login again.');
                 removeToken('csrf-token');
                 navigate('/access-denied');
-                // console.log("sdfsdcvcf: ", error.response);
             }
         } finally {
+            // Stop loading indicator
             setIsFetching(false);
         }
     };
+
+
+    
+
+
 
     const initializeUserData = () => {
         if(isFetching) {
             fetchPersonalInformation();
         }
     };
+
+    // Clear validation errors when file data is loaded
+    useEffect(() => {
+        // This effect will run when file names are set, clearing any validation errors
+        console.log("File names useEffect triggered:", {
+            signature: signatureFileName,
+            idPicture: IDPictureFileName,
+            srn: SRNFileName,
+            seamansBook: seamansBookFileName,
+            lastDisembarkation: lastDisembarkationFileName,
+            license: licenseFileName
+        });
+        
+        if (signatureFileName || IDPictureFileName || SRNFileName || seamansBookFileName || lastDisembarkationFileName || licenseFileName) {
+            console.log("File data loaded, clearing validation errors if any");
+            // The validation will be re-run when the form is submitted or when stepping through the form
+        }
+    }, [signatureFileName, IDPictureFileName, SRNFileName, seamansBookFileName, lastDisembarkationFileName, licenseFileName]);
 
     const GetActivities = async () => {
         try {
@@ -266,7 +345,6 @@ const useMyAccountLogic = () => {
                 alert('Session expired. Please login again.');
                 removeToken('csrf-token');
                 navigate('/access-denied');
-                // console.log("xm,cnv; ", error.response);
             } else {
                 alert(error.response?.data?.message || 'Failed to load activities');
             }
@@ -275,16 +353,13 @@ const useMyAccountLogic = () => {
         }
     };
 
-    const CheckUploadedAvatar = (e, fileType = 'avatar') => {
-        const file = e.target ? e.target.files[0] : e.files?.[0];
-        const fileName = e.fileName || file?.name || '';
-        
-        if (!file) return;
 
-        if (fileType === 'avatar') {
-            setAvatar(file);
-            return;
-        }
+    const CheckUploadedAvatar = (e, fileType) => {
+        // Handle both regular file input and drag-and-drop events
+        const file = e.target?.files?.[0] || e.files?.[0];
+        const fileName = file ? file.name : '';
+
+        console.log(`Processing ${fileType}:`, { file, fileName, eventType: e.target ? 'input' : 'drag' });
 
         switch(fileType) {
             case 'signature':
@@ -303,7 +378,7 @@ const useMyAccountLogic = () => {
                 setSeamansBook(file);
                 setSeamansBookFileName(fileName);
                 break;
-            case 'lastEmbarkment':
+            case 'lastDisembarkation':
                 setLastDisembarkation(file);
                 setLastDisembarkationFileName(fileName);
                 break;
@@ -314,39 +389,50 @@ const useMyAccountLogic = () => {
             default:
                 console.warn('Unknown file type:', fileType);
         }
+
+        console.log(`Uploaded ${fileType}:`, file);
     };
+
+
 
     const SubmitFormPersonal = async (e) => {
         e.preventDefault();
-        
-        console.log("🔄 Form submission initiated");
 
+        console.log("Form submission initiated");
+        console.log("File states before submission:", {
+            signatureFile: signatureFile,
+            signatureFileName: signatureFileName,
+            IDPicture: IDPicture,
+            IDPictureFileName: IDPictureFileName,
+            SRNFile: SRNFile,
+            SRNFileName: SRNFileName,
+            seamansBook: seamansBook,
+            seamansBookFileName: seamansBookFileName,
+            LastDisembarkation: LastDisembarkation,
+            lastDisembarkationFileName: lastDisembarkationFileName,
+            licenseFile: licenseFile,
+            licenseFileName: licenseFileName
+        });
+        
         try {
             setProgress(0);
             setIsSubmitting(true);
             setShowLoader(true);
-            
-            // Get authentication token from browser storage
-            console.log("⏳ Loading animation started");
-            
             const token = getToken("csrf-token");
-            
-            // Create FormData object to send data and files
             const formData = new FormData();
-            
-            // Utility: sanitize phone by stripping non-digits (remove '+' and formatting)
-            const sanitizePhone = (phone) => {
-                if (!phone) return '';
-                return String(phone).replace(/\D/g, '');
-            };
 
             // STEP 2: Add general information fields to form data
-            formData.append('gen_info_trainee_id', userData?.id || '');
-            formData.append('gen_info_srn', srn || '');
-            formData.append('gen_info_status', userType || 'NEW');
+            formData.append('fname', firstName || '');
+            formData.append('mname', middlename || '');
+            formData.append('lname', lastName || '');
+            formData.append('suffix', suffix || '');
+            formData.append('email', email.toLowerCase() || '');
+            formData.append('gen_info_trainee_id', userData?.id  || '');
+            formData.append('gen_info_srn', srn || ''); 
+            formData.append('gen_info_status', userType || 'NEW'); 
             formData.append('gen_info_gender', sex || ''); 
-            formData.append('gen_info_birthdate', birthday || '');
-            formData.append('gen_info_civil_status', civilStatus || '');
+            formData.append('birthdate', birthdate || '');
+            formData.append('gen_info_civil_status', civilStatus || ''); 
             formData.append('gen_info_citizenship', nationality === 'Others' ? nationalityOther : nationality);
             
             // STEP 3: Add current address fields
@@ -364,9 +450,9 @@ const useMyAccountLogic = () => {
             formData.append('gen_info_birthplace_barangay', birthplaceAddress.barangay || '');
             
             // STEP 5: Add contact information
-            formData.append('gen_info_number_one', sanitizePhone(mobileNumber1));
-            formData.append('gen_info_number_two', sanitizePhone(mobileNumber2));
-            formData.append('gen_info_landline', sanitizePhone(landline));
+            formData.append('gen_info_number_one', mobileNumber1 || 0);
+            formData.append('gen_info_number_two', mobileNumber2 || 0);
+            formData.append('gen_info_landline', landline || '');
             formData.append('gen_info_email', email.toLowerCase());
             formData.append('gen_info_facebook', facebookAccount || '');
             
@@ -374,34 +460,72 @@ const useMyAccountLogic = () => {
             formData.append('person_name', CPname || '');
             formData.append('person_relationship', CPrelationship || '');
             formData.append('person_address', CPaddress || '');
-            formData.append('person_landline', sanitizePhone(CPtelephoneNumber));
-            formData.append('person_number_one', sanitizePhone(CPmobileNumber1));
-            formData.append('person_number_two', sanitizePhone(CPmobileNumber2));
+            formData.append('landline', CPtelephoneNumber || ''); 
+            formData.append('person_number_one', CPmobileNumber1 || '');
+            formData.append('person_number_two', CPmobileNumber2 || '');
             formData.append('person_email', CPemail || '');
             
             // STEP 7: Add educational attainment fields
             formData.append('school_course_taken', CourseTaken || '');
-            formData.append('school_address', SchoolAddress || '');
-            formData.append('school_graduated', SchoolName || '');
+            formData.append('school', SchoolName || '');
+            formData.append('school_year_graduated', YearGraduated || '');
             
             // STEP 8: Add shipboard experience fields
             formData.append('ship_status', shipboardExperience || '');
             formData.append('ship_license', license || '');
             formData.append('ship_rank', rank || '');
-            formData.append('ship_date_of_embarkment', disembarkation || '');
+            formData.append('ship_date_of_embarkment', disembarkation || ''); 
             formData.append('ship_principal', ShippingPrincipal || '');
             formData.append('ship_manning', ManningCompany || '');
-            formData.append('ship_landline', sanitizePhone(LandlineNumber));
-            formData.append('ship_number', sanitizePhone(LSEMobileNumber));
+            formData.append('ship_landline', LandlineNumber || '');
+            formData.append('ship_number', LSEMobileNumber || '');
             formData.append('httpMethod', "POST");
             
             // STEP 9: Add file attachments (only if files are selected)
-            if (signatureFile) formData.append('file_e_signature', signatureFile);
-            if (IDPicture) formData.append('file_id_picture', IDPicture);
-            if (SRNFile) formData.append('file_srn_number', SRNFile);
-            if (seamansBook) formData.append('file_sea_service', seamansBook);
-            if (LastDisembarkation) formData.append('file_last_disembarkment', LastDisembarkation);
-            if (licenseFile) formData.append('file_marina_license', licenseFile);
+            // For updates: only append files if they are new uploads (not just existing filenames)
+            // For new users: append the actual file objects
+            
+            if (signatureFile && signatureFile instanceof File) {
+                formData.append('file_e_signature', signatureFile);
+                console.log("Appending signature file:", signatureFile.name);
+            } else if (signatureFileName) {
+                console.log("Signature file exists but not uploading new one:", signatureFileName);
+            }
+            
+            if (IDPicture && IDPicture instanceof File) {
+                formData.append('file_id_picture', IDPicture);
+                console.log("Appending ID picture file:", IDPicture.name);
+            } else if (IDPictureFileName) {
+                console.log("ID picture file exists but not uploading new one:", IDPictureFileName);
+            }
+            
+            if (SRNFile && SRNFile instanceof File) {
+                formData.append('file_srn_number', SRNFile);
+                console.log("Appending SRN file:", SRNFile.name);
+            } else if (SRNFileName) {
+                console.log("file exists but not uploading new one:", SRNFileName);
+            }
+            
+            if (seamansBook && seamansBook instanceof File) {
+                formData.append('file_sea_service', seamansBook);
+                console.log("Appending sea service file:", seamansBook.name);
+            } else if (seamansBookFileName) {
+                console.log("Sea service file exists but not uploading new one:", seamansBookFileName);
+            }
+            
+            if (LastDisembarkation && LastDisembarkation instanceof File) {
+                formData.append('file_last_disembarkment', LastDisembarkation);
+                console.log("Appending last disembarkation file:", LastDisembarkation.name);
+            } else if (lastDisembarkationFileName) {
+                console.log("Last disembarkation file exists but not uploading new one:", lastDisembarkationFileName);
+            }
+            
+            if (licenseFile && licenseFile instanceof File) {
+                formData.append('file_marina_license', licenseFile);
+                console.log("Appending license file:", licenseFile.name);
+            } else if (licenseFileName) {
+                console.log("License file exists but not uploading new one:", licenseFileName);
+            }
 
             // STEP 10: API CALL - POST request to save/update trainee information
             const response = await axios.post(`${url}/my-account/create_or_update_additional_info`, formData, {
@@ -417,7 +541,15 @@ const useMyAccountLogic = () => {
                     Accept: 'application/json',
                 }
             });
-
+            console.log("Files being sent:", {
+                signature: signatureFile?.name,
+                idPicture: IDPicture?.name,
+                srn: SRNFile?.name,
+                seamansBook: seamansBook?.name,
+                lastDisembarkation: LastDisembarkation?.name,
+                license: licenseFile?.name
+            });
+            console.log("payload: ", response);
             // STEP 11: Handle successful response
             if(response.status === 200 || response.status === 201) {
                 // Show success toast
@@ -425,6 +557,8 @@ const useMyAccountLogic = () => {
                 setToastStatus('success');
                 setOpenToast(true);
                 
+                // Refresh user data to get updated file information
+                console.log("Refreshing user data after successful update...");
                 await fetchPersonalInformation();
 
                 if(response.data.reloggin) {
@@ -435,53 +569,48 @@ const useMyAccountLogic = () => {
                     }, 2600);
                     
                     setTimeout(() => {
-                        removeToken('csrf-token');
-                        navigate('/access-denied');
-                        // console.log("blablalba",response.data)
+                        // removeToken('csrf-token');
+                        // navigate('/access-denied');
                     }, 5000);
                 }
             }
+            console.log("useridid: ", userData?.id);
         } catch (error) {
-
-            console.error("❌ Form submission error:", error);
-            console.log("✅ USER DATA RETAINED - All form inputs preserved for correction and resubmission");
-
-            
+            console.log("id: ", userData?.id);
+            console.error("Form submission error:", error);
+            console.log("USER DATA RETAINED - All form inputs preserved for correction and resubmission");
             
             if (error.response) {
                 // Server responded with error
                 if (error.response.status === 500) {
-                    setToastMessage('⚠️ Session expired. Please login again.');
+                    setToastMessage('Session expired. Please login again.');
                     setToastStatus('error');
                     setOpenToast(true);
                     setTimeout(() => {
-                        removeToken('csrf-token');
-                        navigate('/access-denied');
-                        // console.log("pep: ", error.response);
+                        // removeToken('csrf-token');
+                        // navigate('/access-denied');
                     }, 2000);
                 } else if (error.response.status === 422) {
-                    // Validation error - show specific message
                     const message = error.response.data?.message || "Please check your input and try again.";
-                    setToastMessage(`❌ Validation Error: ${message}. ✅ Your data has been retained - please correct and resubmit.`);
+                    setToastMessage(`Validation Error: ${message}. Your data has been retained - please correct and resubmit.`);
                     setToastStatus('error');
                     setOpenToast(true);
                 } else {
-                    setToastMessage(`❌ ${error.response.data?.message || "Failed to save information"}. ✅ Your data is safe - please try again.`);
+                    setToastMessage(`${error.response.data?.message || "Failed to save information"}. Your data is safe - please try again.`);
                     setToastStatus('error');
                     setOpenToast(true);
                 }
             } else if (error.request) {
                 // No response from server
-                setToastMessage("❌ Cannot connect to server. ✅ Your data is safe - please check your internet and try again.");
+                setToastMessage("Cannot connect to server. Your data is safe - please check your internet and try again.");
                 setToastStatus('error');
                 setOpenToast(true);
             } else {
                 // Other errors
-                setToastMessage("❌ An error occurred. ✅ Your data has been retained - please try again.");
+                setToastMessage("An error occurred. Your data has been retained - please try again.");
                 setToastStatus('error');
                 setOpenToast(true);
             }
-            
         } finally {
             // STEP 13: Stop loading indicators
             setIsSubmitting(false);
@@ -489,9 +618,8 @@ const useMyAccountLogic = () => {
         }
     };
 
-
     const SubmitFormChangePassword = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Prevent page reload
 
         try {
             setProgress(0);
@@ -538,12 +666,10 @@ const useMyAccountLogic = () => {
                     setTimeout(() => {
                         removeToken('csrf-token');
                         navigate('/access-denied');
-                        // console.loog("pew: ", response?.data);
                     }, 5000);
                 }
             }
         } catch (error) {
-
             console.error("Password change error:", error);
             console.log("PASSWORD FIELDS RETAINED - User can correct and retry");
             
@@ -553,8 +679,7 @@ const useMyAccountLogic = () => {
                 setOpenToast(true);
                 setTimeout(() => {
                     removeToken('csrf-token');
-                    navigate('/access-denied');
-                    // console.log("asdas; ", error.response); 
+                    navigate('/access-denied'); 
                 }, 2000);
             } else {
                 setToastMessage(`❌ ${error.response?.data?.message || 'Failed to update password'}. ✅ Please check your input and try again.`);
@@ -567,6 +692,7 @@ const useMyAccountLogic = () => {
             setShowLoader(false);
         }
     };
+
 
     return {
         // State
@@ -583,7 +709,7 @@ const useMyAccountLogic = () => {
         nationality, setNationality,
         nationalityOther, setNationalityOther,
         civilStatus, setCivilStatus,
-        birthday, setBirthday,
+        birthdate, setBirthdate,
         birthplaceAddress, setBirthplaceAddress,
         addressData, setAddressData,
         areaCode, setAreaCode,
@@ -623,6 +749,13 @@ const useMyAccountLogic = () => {
         seamansBookFileName,
         lastDisembarkationFileName,
         licenseFileName,
+        // File preview URLs (for existing files)
+        signatureFileUrl,
+        IDPictureFileUrl,
+        SRNFileUrl,
+        seamansBookFileUrl,
+        lastDisembarkationFileUrl,
+        licenseFileUrl,
         currentPassword, setCurrentPassword,
         password, setPassword,
         confirmPassword, setConfirmPassword,
@@ -631,6 +764,8 @@ const useMyAccountLogic = () => {
         isFetching,
         isFetchingActivities,
         activities,
+        courses,
+        YearGraduated, setYearGraduated,
         
         // Utilities
         userData,

@@ -1,3 +1,4 @@
+import { FormControl, InputLabel, OutlinedInput } from '@mui/material';
 import React, { useState, useMemo, useCallback } from 'react';
 import DataTable from 'react-data-table-component';
 
@@ -56,7 +57,16 @@ const NMPDataTable = ({
 
     return (
         <>
-            <input className="form-control form-control-sm w-100 mb-1" placeholder="Search" value={searchText} onChange={(e) => handleSearch(e.target.value)} />
+            <FormControl fullWidth size='small' margin='dense' variant="outlined">
+                <InputLabel htmlFor="NMPDatatableSearch">Search <span className='text-danger'>*</span></InputLabel>
+                <OutlinedInput
+                    value={searchText}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    id="NMPDatatableSearch"
+                    type="text"
+                    label={<p>Search <span className='text-danger'>*</span></p>}
+                />
+            </FormControl>
 
             <DataTable
                 keyField="id"

@@ -14,14 +14,14 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->engine = 'InnoDB';
             $table->id();
-            $table->string('fname');
-            $table->string('lname');
+            $table->string('fname')->nullable();
+            $table->string('lname')->nullable();
             $table->string('mname')->nullable();
-            $table->string('suffix')->nullable();;
+            $table->string('suffix')->nullable();
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
-            $table->date('birthdate');
-            $table->enum('role', ['TRAINEE', 'ADMIN-DORMITORY', 'ADMIN-ENROLLMENT', 'TRAINER'])->default('TRAINEE');
+            $table->date('birthdate')->nullable();
+            $table->enum('role', ['SUPERADMIN', 'TRAINEE', 'ADMIN-DORMITORY', 'ADMIN-ENROLLMENT', 'ADMIN-LIBRARY', 'TRAINER'])->default('SUPERADMIN');
             $table->string('password');
             $table->string('profile_picture', 255)->default('default-avatar.png');
             $table->rememberToken(); 
